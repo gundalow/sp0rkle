@@ -57,6 +57,7 @@ Drivers
 *Tell
   //Tell person X when they next appear online
   tell steve where's the laptop?
+  Needs to active on join channel, speak, /me
 
 
 *date
