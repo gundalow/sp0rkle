@@ -1,8 +1,8 @@
 package decisiondriver
 
 import (
-	"lib/util"
-	"rand"
+	"github.com/fluffle/sp0rkle/lib/util"
+	"math/rand"
 	"reflect"
 	"testing"
 )
@@ -38,7 +38,7 @@ func TestDecide(t *testing.T) {
 		"<plugin=decide singlevalue>",
 		"<plugin=decide AAA BBB CCC>",
 		"<plugin=decide DDD | EEE>",
-		"<plugin=decide FFF | GGG>",
+		"<plugin=decide FFF | GGG | HHH>",
 		"<plugin=decide spam | spam and sausage | eggs | ham | spam eggs and spam>",
 		"<plugin=decide \"spam\" \"spam and sausage\" \"eggs\" \"ham\" \"spam spam spam spam eggs and spam\">",
 		"<plugin=decide \"cheese\" \"ham>",
@@ -49,11 +49,11 @@ func TestDecide(t *testing.T) {
 	expected := []string{
 		"singlevalue", //if their is only one option, accept that
 		"AAA",
-		"EEE",
-		"GGG",
+		"DDD",
+		"HHH",
 		"ham",
 		"spam spam spam spam eggs and spam",
-		"Unbalanced quotes",
+		"<plugin error>",
 		"cheese",
 		"foo's bar",
 		"cheese",
@@ -66,7 +66,7 @@ func TestDecide(t *testing.T) {
 	}
 }
 
-func TestChoices(t *testing.T) {
+func TestSplitDelimitedString(t *testing.T) {
 	tests := []string{
 		"singlevalue",
 		"AAA BBB CCC",
@@ -74,6 +74,7 @@ func TestChoices(t *testing.T) {
 		"FFF | GGG | HHH",
 		"spam | spam and sausage | eggs | ham | spam eggs and spam",
 		`"spam" "spam and sausage" "eggs" "ham" "spam spam spam spam eggs and spam"`,
+		`mixed "quoting styles" 'just to' cause problems`,
 		`"cheese" "ham`,
 		`'cheese' 'carrots' 'sausage'`,
 		`"foo bar" "foo's bar" "something with spaces in it"`,
@@ -86,13 +87,14 @@ func TestChoices(t *testing.T) {
 		[]string{"FFF ", " GGG ", " HHH"},
 		[]string{"spam ", " spam and sausage ", " eggs ", " ham ", " spam eggs and spam"},
 		[]string{"spam", "spam and sausage", "eggs", "ham", "spam spam spam spam eggs and spam"},
-		[]string{"Unbalanced quotes"},
+		[]string{"mixed", "quoting styles", "just to", "cause", "problems"},
+		[]string{},
 		[]string{"cheese", "carrots", "sausage"},
 		[]string{"foo bar", "foo's bar", "something with spaces in it"},
 		[]string{"foobar", "bar", "cheese"},
 	}
 	for i, s := range tests {
-		ret := choices(s)
+		ret := splitDelimitedString(s)
 		// We don't trim space from the possible choices *in* choices()
 		// as it's only really necessary to do so for the one chosen.
 		if !reflect.DeepEqual(expected[i], ret) {

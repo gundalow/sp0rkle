@@ -8,30 +8,14 @@ Bugs: Known problems with current implementation
 Drivers
 =======
 *decide
-  command: decide, choose
-  decide carrots peas
-  decide write unit tests | fix bugs
-  decide "tidy your room" "eat your greens" "behave"
-  factoid plugins for decide and rand
+  - Done, for now
+  - Not ported: 8ball, best of N, percent (they were basically unused)
 
 *Calculate
-  #Wrapper round google calc, as well as some specific lookups
-  // Not sure about using google -- HTML scraping *sucks*
-  // Should be able to write a pretty good calc parser in ragel :-)
-  // Maybe use mongo for persistent constant storage and allow new consts
-  // to be defined by users
-  command: calc(ulate)
-  5 + 2
-  convert_chr => ascii character -> decimal repr of uint8
-  convert_ord => decimal repr of uint8 -> ascii character
-  convert_base => base 10to16 <decimal> -> <hex> for bases 2..62
-  calc_len => length <string> -> string length
-  calc_netmask => netmask ip.add.re.ss/cidr | netmask ip.add.re.ss ne.t.ma.sk
-    -> $ip/$cidr is in the range $bot-$top and has the netmask $netmask
-
+  - All of the old functionality ported over
 
 // There are probably more useful web services with JSON apis to wrap,
-// these can probably all be in one driver to al
+// these can all go in 'netdriver'
 *WebServices
   - exchange (XE.com?)
     command: exchange, convert
@@ -77,10 +61,8 @@ Drivers
 
 
 *Seen
-  //related to <lines>, when was the last time we saw person X say something,
-  and what were the last two things they said (since last can often be pingtout)
-  Also report similar sounding nicknames (steve, steve-afk)
-  Should track lots of actions, such as "changing there nick"
+  // Keep track of people's presence on IRC.
+  // Pretty much done, for simple stuff.
 
 *urlsearch
   //Keep a track of urls that are said and allow them to be searched (using regex)
@@ -93,17 +75,13 @@ Drivers
 
 *Quotes
   // Started, in lib/quotes and sp0rkle/drivers/quotedriver
-  // Still TODO: plenty ;-)
-  - Add quotes: q(uote )?add $quote
-  - Delete quotes: q(uote )?del $quote_id
-  - Quote rate-limiting per nick in channels (to stop ben spamming)
+  // Still TODO: some...
   - Multi-line quote add for copypasta win?
     + q(uote )?begin
     + record all lines said by Nick
     + q(uote )?end
   - Multi-line quote storage? (means parsing logic in quoteimporter)
   - Quote stats (use access counts)
-  - Quote plugin so factoids with <plugin=quote> work
   - Help, unit tests, etc.
 
 *Factoids
@@ -134,6 +112,7 @@ Core
 ====
 *Persistent ignore list
 *Admin commands like join/part/ignore (and perms)
+* Rewrite driver handlers to be methods wherever possible?
 
 *Ticker for reminders
   - probably implemented with go func(){ time.Sleep(t); ... }()

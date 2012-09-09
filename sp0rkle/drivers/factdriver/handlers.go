@@ -3,38 +3,20 @@ package factdriver
 import (
 	"fmt"
 	"github.com/fluffle/goevent/event"
-	"launchpad.net/gobson/bson"
-	"lib/db"
-	"lib/factoids"
-	"os"
-	"rand"
-	"sp0rkle/bot"
-	"sp0rkle/base"
-	"strings"
+	"github.com/fluffle/sp0rkle/lib/factoids"
+	"github.com/fluffle/sp0rkle/lib/util"
+	"github.com/fluffle/sp0rkle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/sp0rkle/bot"
+	"labix.org/v2/mgo/bson"
+	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
-
-type FactoidHandler func(*bot.Sp0rkle, *factoidDriver, *base.Line)
-
-// Unboxer for FactoidDriver handlers
-func FDHandler(f FactoidHandler) event.Handler {
-	return event.NewHandler(func(ev ...interface{}) {
-		f(ev[0].(*bot.Sp0rkle), ev[1].(*factoidDriver), ev[2].(*base.Line))
-	})
-}
 
 func (fd *factoidDriver) RegisterHandlers(r event.EventRegistry) {
 	r.AddHandler(bot.NewHandler(fd_privmsg), "bot_privmsg")
 	r.AddHandler(bot.NewHandler(fd_action), "bot_action")
-	r.AddHandler(FDHandler(fd_lookup), "fd_lookup")
-	r.AddHandler(FDHandler(fd_add), "fd_add")
-	r.AddHandler(FDHandler(fd_delete), "fd_delete")
-	r.AddHandler(FDHandler(fd_replace), "fd_replace")
-	r.AddHandler(FDHandler(fd_chance), "fd_chance")
-	r.AddHandler(FDHandler(fd_literal), "fd_literal")
-	r.AddHandler(FDHandler(fd_search), "fd_search")
-	r.AddHandler(FDHandler(fd_info), "fd_info")
 }
 
 func fd_privmsg(bot *bot.Sp0rkle, line *base.Line) {
@@ -42,69 +24,52 @@ func fd_privmsg(bot *bot.Sp0rkle, line *base.Line) {
 
 	// If we're not being addressed directly, short-circuit to lookup.
 	if !line.Addressed {
-		bot.Dispatch("fd_lookup", fd, line)
+		fd_lookup(bot, fd, line)
 		return
 	}
 
-	l := strings.ToLower(line.Args[1])
+	nl := line.Copy()
 	// Test for various possible courses of action.
 	switch {
 	// Factoid add: 'key := value' or 'key :is value'
-	case strings.Index(l, ":=") != -1:
-		fallthrough
-	case strings.Index(l, ":is") != -1:
-		bot.Dispatch("fd_add", fd, line)
+	case util.ContainsAny(nl.Args[1], []string{":=", ":is"}):
+		fd_add(bot, fd, nl)
 
 	// Factoid delete: 'forget|delete that' => deletes fd.lastseen[chan]
-	case strings.HasPrefix(l, "forget that"):
-		fallthrough
-	case strings.HasPrefix(l, "delete that"):
-		bot.Dispatch("fd_delete", fd, line)
+	case util.HasAnyPrefix(nl.Args[1], []string{"forget that", "delete that"}):
+		fd_delete(bot, fd, nl)
 
 	// Factoid replace: 'replace that with' => updates fd.lastseen[chan]
-	case strings.HasPrefix(l, "replace that with "):
-		// chop off the "known" bit to leave just the replacement
-		nl := line.Copy()
-		nl.Args[1] = nl.Args[1][18:]
-		bot.Dispatch("fd_replace", fd, line)
+	case util.StripAnyPrefix(&nl.Args[1], []string{"replace that with "}):
+		fd_replace(bot, fd, nl)
 
 	// Factoid chance: 'chance of that is' => sets chance of fd.lastseen[chan]
-	case strings.HasPrefix(l, "chance of that is "):
-		// chop off the "known" bit to leave just the replacement
-		nl := line.Copy()
-		nl.Args[1] = nl.Args[1][18:]
-		bot.Dispatch("fd_chance", fd, nl)
+	case util.StripAnyPrefix(&nl.Args[1], []string{"chance of that is "}):
+		fd_chance(bot, fd, nl)
 
 	// Factoid literal: 'literal key' => info about factoid
-	case strings.HasPrefix(l, "literal "):
-		// chop off the "known" bit to leave just the key
-		nl := line.Copy()
-		nl.Args[1] = nl.Args[1][8:]
-		bot.Dispatch("fd_literal", fd, nl)
+	case util.StripAnyPrefix(&nl.Args[1], []string{"literal "}):
+		fd_literal(bot, fd, nl)
 
 	// Factoid search: 'fact search regexp' => list of possible key matches
-	case strings.HasPrefix(l, "fact search "):
-		nl := line.Copy()
-		nl.Args[1] = nl.Args[1][12:]
-		bot.Dispatch("fd_search", fd, nl)
+	case util.StripAnyPrefix(&nl.Args[1], []string{"fact search "}):
+		fd_search(bot, fd, nl)
 
 	// Factoid info: 'fact info key' => some information about key
-	case strings.HasPrefix(l, "fact info"):
-		nl := line.Copy()
-		nl.Args[1] = nl.Args[1][9:]
-		bot.Dispatch("fd_info", fd, nl)
+	case util.StripAnyPrefix(&nl.Args[1], []string{"fact info "}):
+		fd_info(bot, fd, nl)
 
 	// If we get to here, none of the other FD command possibilities
 	// have matched, so try a lookup...
 	default:
-		bot.Dispatch("fd_lookup", fd, line)
+		fd_lookup(bot, fd, nl)
 	}
 }
 
 func fd_action(bot *bot.Sp0rkle, line *base.Line) {
 	fd := bot.GetDriver(driverName).(*factoidDriver)
 	// Actions just trigger a lookup.
-	bot.Dispatch("fd_lookup", fd, line)
+	fd_lookup(bot, fd, line)
 }
 
 func fd_add(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
@@ -120,39 +85,32 @@ func fd_add(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 		val = strings.Join([]string{strings.TrimSpace(kv[0]),
 			"is", strings.TrimSpace(kv[1])}, " ")
 	}
-	n := db.StorableNick{line.Nick, line.Ident, line.Host}
-	c := db.StorableChan{line.Args[0]}
+	n, c := line.Storable()
 	fact := factoids.NewFactoid(key, val, n, c)
 	if err := fd.Insert(fact); err == nil {
 		count := fd.GetCount(key)
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: Woo, I now know %d things about '%s'.",
-			line.Nick, count, key))
+		bot.ReplyN(line, "Woo, I now know %d things about '%s'.", count, key)
 	} else {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf("Oh no! %s.", err))
+		bot.ReplyN(line, "Error storing factoid: %s.", err)
 	}
 }
 
 func fd_chance(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 	str := strings.TrimSpace(line.Args[1])
-	var chance float32
+	var chance float64
 
 	if strings.HasSuffix(str, "%") {
 		// Handle 'chance of that is \d+%'
 		if i, err := strconv.Atoi(str[:len(str)-1]); err != nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: '%s' didn't look like a % chance to me.",
-				line.Nick, str))
+			bot.ReplyN(line, "'%s' didn't look like a % chance to me.", str)
 			return
 		} else {
-			chance = float32(i) / 100
+			chance = float64(i) / 100
 		}
 	} else {
 		// Assume the chance is a floating point number.
-		if c, err := strconv.Atof32(str); err != nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: '%s' didn't look like a chance to me.",
-				line.Nick, str))
+		if c, err := strconv.ParseFloat(str, 64); err != nil {
+			bot.ReplyN(line, "'%s' didn't look like a chance to me.", str)
 			return
 		} else {
 			chance = c
@@ -161,9 +119,7 @@ func fd_chance(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 
 	// Make sure the chance we've parsed lies in (0.0,1.0]
 	if chance > 1.0 || chance <= 0.0 {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: '%s' was outside possible chance ranges.",
-			line.Nick, str))
+		bot.ReplyN(line, "'%s' was outside possible chance ranges.", str)
 		return
 	}
 
@@ -175,22 +131,16 @@ func fd_chance(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 		old := fact.Chance
 		fact.Chance = chance
 		// Update the Modified field
-		n := db.StorableNick{line.Nick, line.Ident, line.Host}
-		c := db.StorableChan{line.Args[0]}
-		fact.Modify(n, c)
+		fact.Modify(line.Storable())
 		// And store the new factoid data
 		if err := fd.Update(bson.M{"_id": ls}, fact); err == nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: '%s' was at %.0f%% chance, now is at %.0f%%.",
-				line.Nick, fact.Key, old*100, chance*100))
+			bot.ReplyN(line, "'%s' was at %.0f%% chance, now is at %.0f%%.",
+				fact.Key, old*100, chance*100)
 		} else {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I failed to replace '%s': %s",
-				line.Nick, fact.Key, err))
+			bot.ReplyN(line, "I failed to replace '%s': %s", fact.Key, err)
 		}
 	} else {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: Whatever that was, I've already forgotten it.", line.Nick))
+		bot.ReplyN(line, "Whatever that was, I've already forgotten it.")
 	}
 }
 
@@ -199,17 +149,13 @@ func fd_delete(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 	ls := fd.Lastseen(line.Args[0], "")
 	if fact := fd.GetById(ls); fact != nil {
 		if err := fd.Remove(bson.M{"_id": ls}); err == nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I forgot that '%s' was '%s'.",
-				line.Nick, fact.Key, fact.Value))
+			bot.ReplyN(line, "I forgot that '%s' was '%s'.",
+				fact.Key, fact.Value)
 		} else {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I failed to forget '%s': %s",
-				line.Nick, fact.Key, err))
+			bot.ReplyN(line, "I failed to forget '%s': %s", fact.Key, err)
 		}
 	} else {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: Whatever that was, I've already forgotten it.", line.Nick))
+		bot.ReplyN(line, "Whatever that was, I've already forgotten it.")
 	}
 }
 
@@ -217,18 +163,15 @@ func fd_info(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 	key := ToKey(line.Args[1], false)
 	count := fd.GetCount(key)
 	if count == 0 {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: I don't know anything about '%s'.",
-			line.Nick, key))
+		bot.ReplyN(line, "I don't know anything about '%s'.", key)
 		return
 	}
 	msgs := make([]string, 0, 10)
 	if key == "" {
-		msgs = append(msgs, fmt.Sprintf("%s: In total, I know %d things.",
-			line.Nick, count))
+		msgs = append(msgs, fmt.Sprintf("In total, I know %d things.", count))
 	} else {
-		msgs = append(msgs, fmt.Sprintf("%s: I know %d things about '%s'.",
-			line.Nick, count, key))
+		msgs = append(msgs, fmt.Sprintf("I know %d things about '%s'.",
+			count, key))
 	}
 	if created := fd.GetLast("created", key); created != nil {
 		c := created.Created
@@ -259,20 +202,16 @@ func fd_info(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 			"been modified %d times and accessed %d times.",
 			info.Modified, info.Accessed))
 	}
-	bot.Conn.Privmsg(line.Args[0], strings.Join(msgs, " "))
+	bot.ReplyN(line, "%s", strings.Join(msgs, " "))
 }
 
 func fd_literal(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 	key := ToKey(line.Args[1], false)
 	if count := fd.GetCount(key); count == 0 {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: I don't know anything about '%s'.",
-			line.Nick, key))
+		bot.ReplyN(line, "I don't know anything about '%s'.", key)
 		return
 	} else if count > 10 && strings.HasPrefix(line.Args[0], "#") {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: I know too much about '%s', ask me privately.",
-			line.Nick, key))
+		bot.ReplyN(line, "I know too much about '%s', ask me privately.", key)
 		return
 	}
 
@@ -282,16 +221,14 @@ func fd_literal(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 	// Passing an anonymous function to For makes it a little hard to abstract
 	// away in lib/factoids. Fortunately this is something of a one-off.
 	var fact *factoids.Factoid
-	f := func() os.Error {
+	f := func() error {
 		if fact != nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: [%3.0f%%] %s", line.Nick, fact.Chance*100, fact.Value))
+			bot.ReplyN(line, "[%3.0f%%] %s", fact.Chance*100, fact.Value)
 		}
 		return nil
 	}
 	if err := fd.Find(bson.M{"key": key}).For(&fact, f); err != nil {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: Something went wrong: %s", line.Nick, err))
+		bot.ReplyN(line, "Something literally went wrong: %s", err)
 	}
 }
 
@@ -320,19 +257,16 @@ func fd_lookup(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 		// To avoid making this too spammy, forcibly limit the chance to 40%.
 		chance = 0.4
 	}
-	if rand.Float32() < chance {
+	if rand.Float64() < chance {
 		// Store this as the last seen factoid
 		fd.Lastseen(line.Args[0], fact.Id)
 		// Update the Accessed field
 		// TODO(fluffle): fd should take care of updating Accessed internally
-		n := db.StorableNick{line.Nick, line.Ident, line.Host}
-		c := db.StorableChan{line.Args[0]}
-		fact.Access(n, c)
+		fact.Access(line.Storable())
 		// And store the new factoid data
 		if err := fd.Update(bson.M{"_id": fact.Id}, fact); err != nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I failed to update '%s', if: $id: %s ",
-				line.Nick, fact.Key, fact.Id, err))
+			bot.ReplyN(line, "I failed to update '%s' (%s): %s ",
+				fact.Key, fact.Id, err)
 		}
 
 		// Apply the list of factoid plugins to the factoid value.
@@ -354,43 +288,37 @@ func fd_replace(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
 		// Replace the value with the new one
 		fact.Value = strings.TrimSpace(line.Args[1])
 		// Update the Modified field
-		n := db.StorableNick{line.Nick, line.Ident, line.Host}
-		c := db.StorableChan{line.Args[0]}
-		fact.Modify(n, c)
+		fact.Modify(line.Storable())
 		// And store the new factoid data
 		if err := fd.Update(bson.M{"_id": ls}, fact); err == nil {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: '%s' was '%s', now is '%s'.",
-				line.Nick, fact.Key, old, fact.Value))
+			bot.ReplyN(line, "'%s' was '%s', now is '%s'.",
+				fact.Key, old, fact.Value)
 		} else {
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I failed to replace '%s': %s",
-				line.Nick, fact.Key, err))
+			bot.ReplyN(line, "I failed to replace '%s': %s", fact.Key, err)
 		}
 	} else {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: Whatever that was, I've already forgotten it.", line.Nick))
+		bot.ReplyN(line, "Whatever that was, I've already forgotten it.")
 	}
 }
 
 func fd_search(bot *bot.Sp0rkle, fd *factoidDriver, line *base.Line) {
-	if keys := fd.GetKeysMatching(line.Args[1]); keys == nil || len(keys) == 0 {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: I couldn't think of anything matching '%s'.",
-			line.Nick, line.Args[0]))
+	keys := fd.GetKeysMatching(line.Args[1])
+	if keys == nil || len(keys) == 0 {
+		bot.ReplyN(line, "I couldn't think of anything matching '%s'.",
+			line.Args[0])
+		return
+	}
+	// RESULTS.
+	count := len(keys)
+	if count > 10 {
+		res := strings.Join(keys[:10], "', '")
+		bot.ReplyN(line,
+			"I found %d keys matching '%s', here's the first 10: '%s'.",
+			count, line.Args[1], res)
 	} else {
-		// RESULTS.
-		count := len(keys)
-		if count > 10 {
-			res := strings.Join(keys[:10], "', '")
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I found %d keys matching '%s', here's the first 10: '%s'.",
-				line.Nick, count, line.Args[1], res))
-		} else {
-			res := strings.Join(keys, "', '")
-			bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-				"%s: I found %d keys matching '%s', here they are: '%s'.",
-				line.Nick, count, line.Args[1], res))
-		}
+		res := strings.Join(keys, "', '")
+		bot.ReplyN(line,
+			"%s: I found %d keys matching '%s', here they are: '%s'.",
+			count, line.Args[1], res)
 	}
 }

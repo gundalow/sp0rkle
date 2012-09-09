@@ -3,8 +3,11 @@ package util
 // Random utility functions that are useful in various places.
 
 import (
+	"fmt"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func RemovePrefixedNick(text, nick string) (string, bool) {
@@ -68,7 +71,7 @@ func RemoveColours(s string) string {
 }
 
 func RemoveFormatting(s string) string {
-	return strings.Map(func(c int) int {
+	return strings.Map(func(c rune) rune {
 		switch c {
 		case '\002', '\025':
 			// \002 == bold, \025 == underline
@@ -94,6 +97,43 @@ func RemovePrefixes(s string) string {
 	return s
 }
 
+// Apply a set of strings tests to a source string s
+func _any(f func(string, string) bool, s string, l []string) bool {
+	for _, i := range l {
+		if f(s, i) {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns true if string begins with any of prefixes.
+// NOTE: Does prefix comparisons against strings.ToLower(*s)!
+func HasAnyPrefix(s string, prefixes []string) bool {
+	return _any(strings.HasPrefix, strings.ToLower(s), prefixes)
+}
+
+// Returns true if string contains any of indexes.
+// NOTE: Does index searches against strings.ToLower(*s)!
+func ContainsAny(s string, indexes []string) bool {
+	return _any(strings.Contains, strings.ToLower(s), indexes)
+}
+
+// Strips off the first found prefix from the string pointer,
+// returning true if found, false (with no stripping) otherwise.
+// NOTE: Does prefix comparisons against strings.ToLower(*s)!
+func StripAnyPrefix(s *string, prefixes []string) bool {
+	// Can't use _any as we're playing with pointers.
+	l := strings.ToLower(*s)
+	for _, p := range prefixes {
+		if strings.HasPrefix(l, p) {
+			*s = (*s)[len(p):]
+			return true
+		}
+	}
+	return false
+}
+
 // Does this string look like a URL to you?
 // This should be fairly conservative, I hope:
 //   s starts with http:// or https:// and contains no spaces
@@ -101,4 +141,58 @@ func LooksURLish(s string) bool {
 	return ((strings.HasPrefix(s, "http://") ||
 		strings.HasPrefix(s, "https://")) &&
 		strings.Index(s, " ") == -1)
+
+}
+
+func ApplyPluginFunction(val, plugin string, f func(string) string) string {
+	plstart := fmt.Sprintf("<plugin=%s", plugin)
+	for {
+		// Work out the indices of the plugin start and end.
+		ps := strings.Index(val, plstart)
+		if ps == -1 {
+			break
+		}
+		pe := strings.Index(val[ps:], ">")
+		if pe == -1 {
+			// No closing '>', so abort
+			break
+		}
+		pe += ps
+		// Mid is where the plugin args start.
+		mid := ps + len(plstart)
+		// And if there *are* args we should skip the leading space
+		for val[mid] == ' ' { mid++ }
+		val = val[:ps] + f(val[mid:pe]) + val[pe+1:]
+	}
+	return val
+}
+
+func JoinPath(items ...string) string {
+	return strings.Join(items, string(os.PathSeparator))
+}
+
+func TimeSince(t time.Time) string {
+	s := ""
+	sec := int(time.Since(t)/time.Second)
+	times := []struct{
+		d int
+		s string
+	}{
+		{31536000, "y"}, // a year is 365 days, natch.
+		{604800, "w"},
+		{86400, "d"},
+		{3600, "h"},
+		{60, "m"},
+		{1, "s"},
+	}
+	for _, v := range times {
+		if div := sec / v.d; div > 0 {
+			s = fmt.Sprintf("%s%d%s ", s, div, v.s)
+		}
+		sec = sec % v.d
+	}
+	if len(s) > 0 {
+		return s[:len(s)-1]
+	}
+	return ""
 }

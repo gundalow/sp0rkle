@@ -1,33 +1,19 @@
 package quotedriver
 
 import (
-	"fmt"
 	"github.com/fluffle/goevent/event"
-	"launchpad.net/gobson/bson"
-	//	"lib/db"
-	//	"lib/quotes"
-	//	"rand"
-	"sp0rkle/bot"
-	"sp0rkle/base"
-	"strings"
+	"github.com/fluffle/sp0rkle/lib/quotes"
+	"github.com/fluffle/sp0rkle/lib/util"
+	"github.com/fluffle/sp0rkle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/sp0rkle/bot"
+	"labix.org/v2/mgo/bson"
 	"strconv"
-	//	"time"
+	"strings"
 )
-
-type QuoteHandler func(*bot.Sp0rkle, *quoteDriver, *base.Line)
-
-// Unboxer for QuoteDriver handlers
-func QDHandler(f QuoteHandler) event.Handler {
-	return event.NewHandler(func(ev ...interface{}) {
-		f(ev[0].(*bot.Sp0rkle), ev[1].(*quoteDriver), ev[2].(*base.Line))
-	})
-}
 
 func (qd *quoteDriver) RegisterHandlers(r event.EventRegistry) {
 	r.AddHandler(bot.NewHandler(qd_privmsg), "bot_privmsg")
 	//	r.AddHandler(bot.NewHandler(qd_action), "bot_action")
-	r.AddHandler(QDHandler(qd_fetch), "qd_fetch")
-	r.AddHandler(QDHandler(qd_lookup), "qd_lookup")
 }
 
 func qd_privmsg(bot *bot.Sp0rkle, line *base.Line) {
@@ -37,24 +23,56 @@ func qd_privmsg(bot *bot.Sp0rkle, line *base.Line) {
 		return
 	}
 
-	l := strings.ToLower(line.Args[1])
+	nl := line.Copy()
 	switch {
-	// Quote lookup: quote | quote #QID | quote regex
-	case strings.HasPrefix(l, "quote"):
-		nl := line.Copy()
-		handler := "qd_lookup"
-		if len(l) < 6 {
-			// The line is just "quote" so look up a random quote
-			nl.Args[1] = ""
-		} else if l[7] == '#' {
-			// The remainder of the string should be a quote ID
-			nl.Args[1] = nl.Args[1][7:]
-			handler = "qd_fetch"
-		} else {
-			// The remainder of the string is a regex to lookup
-			nl.Args[1] = nl.Args[1][6:]
+	// Quote add: qadd | quote add | add quote
+	case util.StripAnyPrefix(&nl.Args[1], []string{"quote add ", "qadd ", "add quote "}):
+		qd_add(bot, qd, nl)
+	// Quote delete: qdel | quote del | del quote  #?QID
+	case util.StripAnyPrefix(&nl.Args[1], []string{"quote del ", "qdel ", "del quote "}):
+		// Strip optional # before qid
+		if nl.Args[1][0] == '#' {
+			nl.Args[1] = nl.Args[1][1:]
 		}
-		bot.Dispatch(handler, qd, nl)
+		qd_delete(bot, qd, nl)
+	// Quote lookup: quote #QID
+	case util.StripAnyPrefix(&nl.Args[1], []string{"quote #"}):
+		qd_fetch(bot, qd, nl)
+	// Quote lookup: quote | quote regex
+	case strings.ToLower(nl.Args[1]) == "quote":
+		nl.Args[1] = ""
+		fallthrough
+	// This needs to come after the other cases as it will strip just "quote "
+	case util.StripAnyPrefix(&nl.Args[1], []string{"quote "}):
+		qd_lookup(bot, qd, nl)
+	}
+}
+
+func qd_add(bot *bot.Sp0rkle, qd *quoteDriver, line *base.Line) {
+	n, c := line.Storable()
+	quote := quotes.NewQuote(line.Args[1], n, c)
+	quote.QID = qd.NewQID()
+	if err := qd.Insert(quote); err == nil {
+		bot.ReplyN(line, "Quote added succesfully, id #%d.", quote.QID)
+	} else {
+		bot.ReplyN(line, "Error adding quote: %s.", err)
+	}
+}
+
+func qd_delete(bot *bot.Sp0rkle, qd *quoteDriver, line *base.Line) {
+	qid, err := strconv.Atoi(line.Args[1])
+	if err != nil {
+		bot.ReplyN(line, "'%s' doesn't look like a quote id.", line.Args[1])
+		return
+	}
+	if quote := qd.GetByQID(qid); quote != nil {
+		if err := qd.Remove(bson.M{"_id": quote.Id}); err == nil {
+			bot.ReplyN(line, "I forgot quote #%d: %s", qid, quote.Quote)
+		} else {
+			bot.ReplyN(line, "I failed to forget quote #%d: %s", qid, err)
+		}
+	} else {
+		bot.ReplyN(line, "No quote found for id %d", qid)
 	}
 }
 
@@ -64,17 +82,14 @@ func qd_fetch(bot *bot.Sp0rkle, qd *quoteDriver, line *base.Line) {
 	}
 	qid, err := strconv.Atoi(line.Args[1])
 	if err != nil {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: '%s' doesn't look like a quote id.", line.Nick, line.Args[1]))
+		bot.ReplyN(line, "'%s' doesn't look like a quote id.", line.Args[1])
 		return
 	}
 	quote := qd.GetByQID(qid)
 	if quote != nil {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"#%d: %s", quote.QID, quote.Quote))
+		bot.Reply(line, "#%d: %s", quote.QID, quote.Quote)
 	} else {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: No quote found for id %d", line.Nick, qid))
+		bot.ReplyN(line, "No quote found for id %d", qid)
 	}
 }
 
@@ -84,18 +99,14 @@ func qd_lookup(bot *bot.Sp0rkle, qd *quoteDriver, line *base.Line) {
 	}
 	quote := qd.GetPseudoRand(line.Args[1])
 	if quote == nil {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: No quotes matching '%s' found.", line.Nick, line.Args[1]))
+		bot.ReplyN(line, "No quotes matching '%s' found.", line.Args[1])
 		return
 	}
 
 	// TODO(fluffle): qd should take care of updating Accessed internally
 	quote.Accessed++
 	if err := qd.Update(bson.M{"_id": quote.Id}, quote); err != nil {
-		bot.Conn.Privmsg(line.Args[0], fmt.Sprintf(
-			"%s: I failed to update quote #%d: %s",
-			line.Nick, quote.QID, err))
+		bot.ReplyN(line, "I failed to update quote #%d: %s", quote.QID, err)
 	}
-	bot.Conn.Privmsg(line.Args[0], fmt.Sprintf("#%d: %s",
-		quote.QID, quote.Quote))
+	bot.Reply(line, "#%d: %s", quote.QID, quote.Quote)
 }
