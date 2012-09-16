@@ -112,11 +112,12 @@ Core
 ====
 *Persistent ignore list
 *Admin commands like join/part/ignore (and perms)
-* Rewrite driver handlers to be methods wherever possible?
 
-*Ticker for reminders
-  - probably implemented with go func(){ time.Sleep(t); ... }()
-  - it's the lazy way out :-)
+* Change command dispatch to be more centralised, use net/http handler and mux
+  as a design principle. Only goirc handlers should be in bot/handlers.go
+* Push this up into a layer in goirc.
+
+* Stop passing a logging object about, just use the "default" one. Srsly.
 
 *Help
   each plugin and command should implement a help function, e.g.
