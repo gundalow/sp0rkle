@@ -1,7 +1,7 @@
 package seendriver
 
 import (
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/collections/seen"
 	"regexp"
@@ -42,23 +42,23 @@ var sc *seen.Collection
 func Init() {
 	sc = seen.Init()
 
-	bot.HandleFunc(smoke, "privmsg", "action")
-	bot.HandleFunc(recordPrivmsg, "privmsg", "action")
-	bot.HandleFunc(recordJoin, "join", "part")
-	bot.HandleFunc(recordNick, "nick", "quit")
-	bot.HandleFunc(recordKick, "kick")
+	bot.Handle(smoke, client.PRIVMSG, client.ACTION)
+	bot.Handle(recordPrivmsg, client.PRIVMSG, client.ACTION)
+	bot.Handle(recordJoin, client.JOIN, client.PART)
+	bot.Handle(recordNick, client.NICK, client.QUIT)
+	bot.Handle(recordKick, client.KICK)
 
-	bot.CommandFunc(seenCmd, "seen", "seen <nick> [action]  -- "+
+	bot.Command(seenCmd, "seen", "seen <nick> [action]  -- "+
 		"display the last time <nick> was seen on IRC [doing action]")
 }
 
 // Look up or create a "seen" entry for the line.
 // Explicitly don't handle updating line.Text or line.OtherNick
-func seenNickFromLine(line *base.Line) *seen.Nick {
-	sn := sc.LastSeenDoing(line.Nick, line.Cmd)
-	n, c := line.Storable()
+func seenNickFromLine(ctx *bot.Context) *seen.Nick {
+	sn := sc.LastSeenDoing(ctx.Nick, ctx.Cmd)
+	n, c := ctx.Storable()
 	if sn == nil {
-		sn = seen.SawNick(n, c, line.Cmd, "")
+		sn = seen.SawNick(n, c, ctx.Cmd, "")
 	} else {
 		sn.Nick, sn.Chan = n, c
 		sn.Timestamp = time.Now()

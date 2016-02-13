@@ -3,42 +3,42 @@ package karma
 import (
 	"fmt"
 	"github.com/fluffle/golog/logging"
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"github.com/fluffle/sp0rkle/util/datetime"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 	"time"
 )
 
 const COLLECTION = "karma"
-const TimeFormat = "15:04:05, Monday 2 January 2006"
 
 type Karma struct {
 	Subject   string
 	Key       string
 	Score     int
 	Votes     int
-	Upvoter   base.Nick
+	Upvoter   bot.Nick
 	Upvtime   time.Time
-	Downvoter base.Nick
+	Downvoter bot.Nick
 	Downvtime time.Time
 }
 
 func New(thing string) *Karma {
 	return &Karma{
-		Subject:   thing,
-		Key:       strings.ToLower(thing),
+		Subject: thing,
+		Key:     strings.ToLower(thing),
 	}
 }
 
-func (k *Karma) Plus(who base.Nick) {
+func (k *Karma) Plus(who bot.Nick) {
 	k.Score++
 	k.Votes++
 	k.Upvoter, k.Upvtime = who, time.Now()
 }
 
-func (k *Karma) Minus(who base.Nick) {
+func (k *Karma) Minus(who bot.Nick) {
 	k.Score--
 	k.Votes++
 	k.Downvoter, k.Downvtime = who, time.Now()
@@ -49,11 +49,11 @@ func (k *Karma) String() string {
 		k.Subject, k.Score, k.Votes)
 	if k.Upvoter != "" {
 		s += fmt.Sprintf(" Last upvoted by %s at %s.",
-			k.Upvoter, k.Upvtime.Format(TimeFormat))
+			k.Upvoter, datetime.Format(k.Upvtime))
 	}
 	if k.Downvoter != "" {
 		s += fmt.Sprintf(" Last downvoted by %s at %s.",
-			k.Downvoter, k.Downvtime.Format(TimeFormat))
+			k.Downvoter, datetime.Format(k.Downvtime))
 	}
 	return s
 }
@@ -69,7 +69,7 @@ type Collection struct {
 func Init() *Collection {
 	kc := &Collection{db.Init().C(COLLECTION)}
 	if err := kc.EnsureIndex(mgo.Index{
-		Key: []string{"key"},
+		Key:    []string{"key"},
 		Unique: true,
 	}); err != nil {
 		logging.Error("Couldn't create index on karma.key: %s", err)

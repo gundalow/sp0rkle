@@ -2,11 +2,12 @@ package conf
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/fluffle/golog/logging"
 	"github.com/fluffle/sp0rkle/db"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
-	"sync"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const COLLECTION string = "conf"
@@ -23,9 +24,9 @@ type Namespace interface {
 }
 
 type Entry struct {
-	Ns	    namespace
-	Key     string
-	Value   interface{}
+	Ns    namespace
+	Key   string
+	Value interface{}
 }
 
 func (e Entry) String() string {
@@ -111,7 +112,7 @@ func (ns namespace) Float(key string, value ...float64) float64 {
 	}
 	return 0
 }
-	
+
 func (ns namespace) Value(key string, value ...interface{}) interface{} {
 	if len(value) > 0 {
 		ns.set(key, value[0])

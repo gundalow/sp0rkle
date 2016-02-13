@@ -1,6 +1,7 @@
 package karmadriver
 
 import (
+	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/collections/karma"
 	"strings"
@@ -11,9 +12,9 @@ var kc *karma.Collection
 func Init() {
 	kc = karma.Init()
 
-	bot.HandleFunc(recordKarma, "privmsg", "action")
+	bot.Handle(recordKarma, client.PRIVMSG, client.ACTION)
 
-	bot.CommandFunc(karmaCmd, "karma", "karma <thing>  -- "+
+	bot.Command(karmaCmd, "karma", "karma <thing>  -- "+
 		"Retrieve the karma score of <thing>.")
 }
 

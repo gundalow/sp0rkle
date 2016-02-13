@@ -3,19 +3,19 @@ package urls
 import (
 	"fmt"
 	"github.com/fluffle/golog/logging"
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
-	"github.com/fluffle/sp0rkle/util"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+	"math/rand"
 	"time"
 )
 
 const collection string = "urls"
 
 type Url struct {
-	Nick      base.Nick
-	Chan      base.Chan
+	Nick      bot.Nick
+	Chan      bot.Chan
 	Timestamp time.Time
 	Url       string
 	CachedAs  string
@@ -26,7 +26,7 @@ type Url struct {
 	Id        bson.ObjectId `bson:"_id,omitempty"`
 }
 
-func NewUrl(u string, n base.Nick, c base.Chan) *Url {
+func NewUrl(u string, n bot.Nick, c bot.Chan) *Url {
 	return &Url{
 		Url:       u,
 		Nick:      n,
@@ -99,7 +99,7 @@ func (uc *Collection) GetRand(regex string) *Url {
 	}
 	var res Url
 	if count > 1 {
-		query.Skip(util.RNG.Intn(count))
+		query.Skip(rand.Intn(count))
 	}
 	if err = query.One(&res); err != nil {
 		logging.Warn("Fetch for URL lookup '%s' failed: %s", regex, err)

@@ -1,10 +1,11 @@
 package factdriver
 
 import (
+	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/collections/factoids"
 	"github.com/fluffle/sp0rkle/util"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 )
 
@@ -19,26 +20,26 @@ var lastSeen = map[string]bson.ObjectId{}
 func Init() {
 	fc = factoids.Init()
 
-	bot.HandleFunc(insert, "privmsg")
-	bot.HandleFunc(lookup, "privmsg", "action")
+	bot.Handle(insert, client.PRIVMSG)
+	bot.Handle(lookup, client.PRIVMSG, client.ACTION)
 
-	bot.PluginFunc(replaceIdentifiers)
+	bot.Rewrite(replaceIdentifiers)
 
-	bot.CommandFunc(chance, "chance of that is",
+	bot.Command(chance, "chance of that is",
 		"chance  -- Sets trigger chance of the last displayed factoid value.")
-	bot.CommandFunc(edit, "that =~",
+	bot.Command(edit, "that =~",
 		"=~ s/regex/replacement/ -- Edits the last factoid value using regex.")
-	bot.CommandFunc(forget, "delete that",
+	bot.Command(forget, "delete that",
 		"delete  -- Forgets the last displayed factoid value.")
-	bot.CommandFunc(forget, "forget that",
+	bot.Command(forget, "forget that",
 		"forget  -- Forgets the last displayed factoid value.")
-	bot.CommandFunc(info, "fact info",
+	bot.Command(info, "fact info",
 		"fact info <key>  -- Displays some stats about factoid <key>.")
-	bot.CommandFunc(literal, "literal",
+	bot.Command(literal, "literal",
 		"literal <key>  -- Displays the factoid values stored for <key>.")
-	bot.CommandFunc(replace, "replace that with",
+	bot.Command(replace, "replace that with",
 		"replace  -- Replaces the last displayed factoid value.")
-	bot.CommandFunc(search, "fact search",
+	bot.Command(search, "fact search",
 		"fact search <regexp>  -- Searches for factoids matching <regexp>.")
 }
 

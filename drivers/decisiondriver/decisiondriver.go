@@ -14,16 +14,18 @@ import (
 )
 
 func Init() {
-	bot.PluginFunc(randPlugin)
-	bot.PluginFunc(decidePlugin)
+	bot.Rewrite(randPlugin)
+	bot.Rewrite(decidePlugin)
 
-	bot.CommandFunc(randCmd, "rand", "rand <range>  -- "+
+	bot.Command(randCmd, "rand", "rand <range>  -- "+
 		"choose a random number in range [lo-]hi")
-	bot.CommandFunc(decideCmd, "decide", "decide <options>  -- "+
+	bot.Command(decideCmd, "decide", "decide <options>  -- "+
+		"choose one of the (space, pipe, quote) delimited options at random")
+	bot.Command(decideCmd, "choose", "choose <options>  -- "+
 		"choose one of the (space, pipe, quote) delimited options at random")
 }
 
-func randomFloatAsString(val string, r *rand.Rand) string {
+func randomFloatAsString(val string) string {
 	// val should be in the format: [lo-]hi[ format]
 	var lo, hi float64
 	var err error
@@ -48,7 +50,7 @@ func randomFloatAsString(val string, r *rand.Rand) string {
 			hi = 0
 		}
 	}
-	rnd := r.Float64()*(hi-lo) + lo
+	rnd := rand.Float64()*(hi-lo) + lo
 	return fmt.Sprintf(format, rnd)
 }
 

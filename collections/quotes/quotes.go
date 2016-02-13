@@ -2,11 +2,11 @@ package quotes
 
 import (
 	"github.com/fluffle/golog/logging"
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
-	"github.com/fluffle/sp0rkle/util"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+	"math/rand"
 	"sync/atomic"
 	"time"
 )
@@ -16,14 +16,14 @@ const COLLECTION string = "quotes"
 type Quote struct {
 	Quote     string
 	QID       int
-	Nick      base.Nick
-	Chan      base.Chan
+	Nick      bot.Nick
+	Chan      bot.Chan
 	Accessed  int
 	Timestamp time.Time
 	Id        bson.ObjectId `bson:"_id,omitempty"`
 }
 
-func NewQuote(q string, n base.Nick, c base.Chan) *Quote {
+func NewQuote(q string, n bot.Nick, c bot.Chan) *Quote {
 	return &Quote{q, 0, n, c, 0, time.Now(), bson.NewObjectId()}
 }
 
@@ -97,7 +97,7 @@ func (qc *Collection) GetPseudoRand(regex string) *Quote {
 	}
 	var res Quote
 	if count > 1 {
-		query = query.Skip(util.RNG.Intn(count))
+		query = query.Skip(rand.Intn(count))
 	}
 	if err = query.One(&res); err != nil {
 		logging.Warn("Fetch for quote lookup '%s' failed: %s", regex, err)

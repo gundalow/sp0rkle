@@ -4,15 +4,18 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/golog/logging"
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/collections/urls"
 	"github.com/fluffle/sp0rkle/util"
+	"gopkg.in/mgo.v2/bson"
 	"hash/crc32"
 	"io"
-	"labix.org/v2/mgo/bson"
+	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -41,32 +44,32 @@ func Init() {
 		logging.Fatal("Couldn't create URL cache dir: %v", err)
 	}
 
-	bot.HandleFunc(urlScan, "privmsg")
+	bot.Handle(urlScan, client.PRIVMSG)
 
-	bot.CommandFunc(find, "urlfind", "urlfind <regex>  -- "+
+	bot.Command(find, "urlfind", "urlfind <regex>  -- "+
 		"searches for previously mentioned URLs matching <regex>")
-	bot.CommandFunc(find, "url find", "url find <regex>  -- "+
+	bot.Command(find, "url find", "url find <regex>  -- "+
 		"searches for previously mentioned URLs matching <regex>")
-	bot.CommandFunc(find, "urlsearch", "urlsearch <regex>  -- "+
+	bot.Command(find, "urlsearch", "urlsearch <regex>  -- "+
 		"searches for previously mentioned URLs matching <regex>")
-	bot.CommandFunc(find, "url search", "url search <regex>  -- "+
+	bot.Command(find, "url search", "url search <regex>  -- "+
 		"searches for previously mentioned URLs matching <regex>")
 
-	bot.CommandFunc(find, "randurl", "randurl  -- displays a random URL")
-	bot.CommandFunc(find, "random url", "random url  -- displays a random URL")
+	bot.Command(find, "randurl", "randurl  -- displays a random URL")
+	bot.Command(find, "random url", "random url  -- displays a random URL")
 
-	bot.CommandFunc(shorten, "shorten that", "shorten that  -- "+
+	bot.Command(shorten, "shorten that", "shorten that  -- "+
 		"shortens the last mentioned URL.")
-	bot.CommandFunc(shorten, "shorten", "shorten <url>  -- shortens <url>")
+	bot.Command(shorten, "shorten", "shorten <url>  -- shortens <url>")
 
-	bot.CommandFunc(cache, "cache that", "cache that  -- "+
+	bot.Command(cache, "cache that", "cache that  -- "+
 		"caches the last mentioned URL.")
-	bot.CommandFunc(cache, "cache", "cache <url>  -- caches <url>")
-	bot.CommandFunc(cache, "save that", "save that  -- "+
+	bot.Command(cache, "cache", "cache <url>  -- caches <url>")
+	bot.Command(cache, "save that", "save that  -- "+
 		"caches the last mentioned URL.")
-	bot.CommandFunc(cache, "save", "save <url>  -- caches <url>")
+	bot.Command(cache, "save", "save <url>  -- caches <url>")
 
-	// This serves "shortened" urls 
+	// This serves "shortened" urls
 	http.Handle(shortenPath, http.StripPrefix(shortenPath,
 		http.HandlerFunc(shortenedServer)))
 
@@ -93,7 +96,7 @@ func Encode(url string) string {
 		if n, err := q.Count(); n == 0 && err == nil {
 			return s
 		}
-		crcb[util.RNG.Intn(4)]++
+		crcb[rand.Intn(4)]++
 	}
 	logging.Warn("Collided ten times while encoding URL.")
 	return ""
@@ -113,15 +116,29 @@ func Cache(u *urls.Url) error {
 			return fmt.Errorf("Url contains bad substring '%s'.", s)
 		}
 	}
-	res, err := http.Get(u.Url)
+	// Try a HEAD req first to get Content-Length header.
+	res, err := http.Head(u.Url)
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
 	if res.StatusCode != 200 {
 		return fmt.Errorf("Received non-200 response '%s' from server.",
 			res.Status)
 	}
+	if size := res.Header.Get("Content-Length"); size != "" {
+		if bytes, err := strconv.Atoi(size); err != nil {
+			return fmt.Errorf("Received unparseable content length '%s' "+
+				"from server: %v.", size, err)
+		} else if bytes > 1<<22 {
+			return fmt.Errorf("Response too large (%d MB) to cache safely.",
+				bytes/1024/1024)
+		}
+	}
+	res, err = http.Get(u.Url)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
 	// 1 << 22 == 4MB
 	if res.ContentLength > 1<<22 {
 		return fmt.Errorf("Response too large (%d MB) to cache safely.",

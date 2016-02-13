@@ -2,11 +2,12 @@ package factoids
 
 import (
 	"github.com/fluffle/golog/logging"
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
 	"github.com/fluffle/sp0rkle/util"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -37,9 +38,9 @@ type FactoidStat struct {
 	// When <thing> happened
 	Timestamp time.Time
 	// Who did <thing>
-	Nick base.Nick
+	Nick bot.Nick
 	// Where they did <thing>
-	Chan base.Chan
+	Chan bot.Chan
 	// How many times <thing> has been done before
 	Count int
 }
@@ -47,7 +48,7 @@ type FactoidStat struct {
 // Represent info about things that can be done to the factoid
 type FactoidPerms struct {
 	ReadOnly bool
-	Nick     base.Nick
+	Nick     bot.Nick
 }
 
 // Represent info returned from the Info MapReduce
@@ -56,7 +57,7 @@ type FactoidInfo struct {
 }
 
 // Helper to make the work of putting together a completely new *Factoid easier
-func NewFactoid(key, value string, n base.Nick, c base.Chan) *Factoid {
+func NewFactoid(key, value string, n bot.Nick, c bot.Chan) *Factoid {
 	ts := time.Now()
 	ft, fv := ParseValue(value)
 	return &Factoid{
@@ -69,14 +70,14 @@ func NewFactoid(key, value string, n base.Nick, c base.Chan) *Factoid {
 	}
 }
 
-func (f *Factoid) Access(n base.Nick, c base.Chan) {
+func (f *Factoid) Access(n bot.Nick, c bot.Chan) {
 	f.Accessed.Timestamp = time.Now()
 	f.Accessed.Nick = n
 	f.Accessed.Chan = c
 	f.Accessed.Count++
 }
 
-func (f *Factoid) Modify(n base.Nick, c base.Chan) {
+func (f *Factoid) Modify(n bot.Nick, c bot.Chan) {
 	f.Modified.Timestamp = time.Now()
 	f.Modified.Nick = n
 	f.Modified.Chan = c
@@ -156,7 +157,7 @@ func (fc *Collection) GetPseudoRand(key string) *Factoid {
 	}
 	var res Factoid
 	if count > 1 {
-		query = query.Skip(util.RNG.Intn(count))
+		query = query.Skip(rand.Intn(count))
 	}
 	if err = query.One(&res); err != nil {
 		logging.Warn("Fetching factoid for key failed: %v", err)

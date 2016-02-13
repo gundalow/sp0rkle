@@ -1,12 +1,35 @@
 package datetime
 
 import (
+	"flag"
 	"fmt"
 	"time"
 )
 
+const TimeFormat = "15:04:05, Monday 2 January 2006 MST"
+
+var timezone = flag.String("timezone", "Europe/London",
+	"The timezone to display reminder times in.")
+
 type tokenMap interface {
 	Lookup(input string, lval *yySymType) (tokenType int, ok bool)
+}
+
+type wordMap map[string]int
+
+var wordTokenMap = wordMap{
+	"THE": T_THE,
+	"OF":  T_OF,
+	"IN":  T_IGNORE,
+	"AT":  T_IGNORE,
+	"ON":  T_IGNORE,
+}
+
+func (wtm wordMap) Lookup(input string, lval *yySymType) (int, bool) {
+	if tok, ok := wtm[input]; ok {
+		return tok, ok
+	}
+	return -1, false
 }
 
 type numMap map[string]struct {
@@ -44,6 +67,8 @@ var numTokenMap = numMap{
 	"ND":        {T_DAYQUAL, 2},
 	"RD":        {T_DAYQUAL, 3},
 	"TH":        {T_DAYQUAL, 4},
+	"MIDDAY":    {T_MIDTIME, 12},
+	"MIDNIGHT":  {T_MIDTIME, 0},
 }
 
 func (ntm numMap) Lookup(input string, lval *yySymType) (int, bool) {
@@ -102,6 +127,7 @@ var relTokenMap = relMap{
 	"LAST":    -1,
 	"THIS":     0,
 	"NEXT":     1,
+	"AN":       1,
 	"FIRST":    1,
 	"ONE":      1,
 //	"SECOND":   2,
@@ -155,6 +181,14 @@ func Zone(loc string) *time.Location {
 		return zone(zoneTokenMap[loc])
 	}
 	return zone(loc)
+}
+
+
+func Format(t time.Time, format ...string) string {
+	if len(format) == 1 {
+		return t.In(Zone(*timezone)).Format(format[0])
+	}
+	return t.In(Zone(*timezone)).Format(TimeFormat)
 }
 
 var zoneTokenMap = zoneMap{
@@ -251,7 +285,7 @@ func (ztm zoneMap) Lookup(input string, lval *yySymType) (int, bool) {
 
 type tokenMapList []tokenMap
 
-var tokenMaps = tokenMapList{numTokenMap, abbrTokenMap, relTokenMap, zoneTokenMap}
+var tokenMaps = tokenMapList{wordTokenMap, numTokenMap, abbrTokenMap, relTokenMap, zoneTokenMap}
 
 func (l tokenMapList) Lookup(input string, lval *yySymType) (int, bool) {
 	if DEBUG {

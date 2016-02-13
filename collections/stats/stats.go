@@ -3,10 +3,10 @@ package stats
 import (
 	"fmt"
 	"github.com/fluffle/golog/logging"
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 	"time"
 )
@@ -14,16 +14,16 @@ import (
 const COLLECTION string = "stats"
 
 type NickStat struct {
-	Nick   base.Nick
+	Nick   bot.Nick
 	Key    string
-	Chan   base.Chan
+	Chan   bot.Chan
 	Lines  int
 	Words  int
 	Chars  int
 	Active [7][24]int
 }
 
-func NewStat(n base.Nick, c base.Chan) *NickStat {
+func NewStat(n bot.Nick, c bot.Chan) *NickStat {
 	return &NickStat{
 		Nick:   n,
 		Key:    strings.ToLower(string(n)),

@@ -3,11 +3,12 @@ package seen
 import (
 	"fmt"
 	"github.com/fluffle/golog/logging"
-	"github.com/fluffle/sp0rkle/base"
+	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
 	"github.com/fluffle/sp0rkle/util"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"github.com/fluffle/sp0rkle/util/datetime"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"strings"
 	"time"
 )
@@ -15,9 +16,9 @@ import (
 const COLLECTION string = "seen"
 
 type Nick struct {
-	Nick      base.Nick
-	Chan      base.Chan
-	OtherNick base.Nick
+	Nick      bot.Nick
+	Chan      bot.Chan
+	OtherNick bot.Nick
 	Timestamp time.Time
 	Key       string
 	Action    string
@@ -56,7 +57,7 @@ var actionMap map[string]seenMsg = map[string]seenMsg{
 	"SMOKE": func(n *Nick) string { return "going for a smoke." },
 }
 
-func SawNick(nick base.Nick, ch base.Chan, act, txt string) *Nick {
+func SawNick(nick bot.Nick, ch bot.Chan, act, txt string) *Nick {
 	return &Nick{
 		Nick:      nick,
 		Chan:      ch,
@@ -71,12 +72,12 @@ func SawNick(nick base.Nick, ch base.Chan, act, txt string) *Nick {
 func (n *Nick) String() string {
 	if act, ok := actionMap[n.Action]; ok {
 		return fmt.Sprintf("I last saw %s on %s (%s ago), %s.",
-			n.Nick, n.Timestamp.Format(time.RFC1123),
+			n.Nick, datetime.Format(n.Timestamp),
 			util.TimeSince(n.Timestamp), act(n))
 	}
 	// No specific message format for the action seen.
 	return fmt.Sprintf("I last saw %s at %s (%s ago).",
-		n.Nick, n.Timestamp.Format(time.RFC1123),
+		n.Nick, datetime.Format(n.Timestamp),
 		util.TimeSince(n.Timestamp))
 }
 
@@ -92,8 +93,8 @@ type Collection struct {
 func Init() *Collection {
 	sc := &Collection{db.Init().C(COLLECTION)}
 	indexes := [][]string{
-		{"key", "action"},         // For searching ...
-		{"timestamp"},             // ... and ordering seen entries.
+		{"key", "action"}, // For searching ...
+		{"timestamp"},     // ... and ordering seen entries.
 	}
 	for _, key := range indexes {
 		if err := sc.EnsureIndex(mgo.Index{Key: key}); err != nil {
