@@ -15,7 +15,8 @@ func urlScan(ctx *bot.Context) {
 		if util.LooksURLish(w) {
 			if u := uc.GetByUrl(w); u != nil {
 				if u.Nick != bot.Nick(ctx.Nick) &&
-					time.Since(u.Timestamp) > 2*time.Hour {
+					time.Since(u.Timestamp) > 2*time.Hour &&
+					ctx.Public() {
 					ctx.Reply("that URL first mentioned by %s %s ago",
 						u.Nick, util.TimeSince(u.Timestamp))
 				}
