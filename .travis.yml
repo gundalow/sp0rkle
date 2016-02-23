@@ -14,6 +14,9 @@ go:
 
 sudo : false
 
+notifications:
+      irc: "irc.pl0rt.org#sp0rklf"
+
 # NOTE: Any extra dependencies added here must be reflected in README.md
 install:
   - go get github.com/fluffle/goirc/client
@@ -36,5 +39,6 @@ script:
   - ls -la /home/travis/gopath/src/github.com/fluffle/
   - find /home/travis/gopath/src/github.com/fluffle
   - date +%Z
+  - echo $LANG
   - go test -v --cover ./...
 
