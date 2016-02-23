@@ -39,6 +39,6 @@ script:
   - ls -la /home/travis/gopath/src/github.com/fluffle/
   - find /home/travis/gopath/src/github.com/fluffle
   - date +%Z
-  - echo $LANG
+  - env
   - go test -v --cover ./...
 
