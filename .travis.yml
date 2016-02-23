@@ -35,5 +35,6 @@ script:
   - if [ "$TRAVIS_REPO_SLUG" != "fluffle/sp0rkle" ] ; then ln -s "$HOME/gopath/src/github.com/$TRAVIS_REPO_SLUG" /home/travis/gopath/src/github.com/fluffle/sp0rkle ; fi
   - ls -la /home/travis/gopath/src/github.com/fluffle/
   - find /home/travis/gopath/src/github.com/fluffle
+  - date +%Z
   - go test -v --cover ./...
 
