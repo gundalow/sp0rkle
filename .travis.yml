@@ -35,5 +35,5 @@ script:
   - ln -s $HOME/gopath/src/github.com/bob-smith/sp0rkle /home/travis/gopath/src/github.com/fluffle/sp0rkle
   - ls -la /home/travis/gopath/src/github.com/fluffle/
   - find /home/travis/gopath/src/github.com/fluffle
-  - go build
+  - go test -v --cover ./...
 
