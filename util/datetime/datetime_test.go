@@ -24,6 +24,9 @@ func (tt timeTests) run(t *testing.T, start time.Time) {
 }
 
 func TestParseTimeFormats(t *testing.T) {
+	// To ensure consistents always use UTC
+	flag.Set("timezone", "UTC")
+
 	// RFC822 doesn't specify seconds, and Stamp doesn't specify year
 	ref := time.Date(2004, 6, 22, 13, 10, 0, 0, time.Local)
 	formats := []string{
