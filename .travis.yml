@@ -35,3 +35,5 @@ script:
   - find /home/travis/gopath/src/github.com/fluffle
   - go test -v ./...
 
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
