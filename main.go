@@ -34,7 +34,7 @@ import (
 
 var (
 	httpPort = flag.String("http", ":6666", "Port to serve HTTP requests on.")
-	boltDB   = flag.String("boltdb", "sp0rkle.boltdb", "Path to boltdb file.")
+	boltDBfooo   = flag.String("boltdb", "sp0rkle.boltdb", "Path to boltdb file.")
 	mongoDB  = flag.String("mongodb", "localhost",
 		"Address of MongoDB server to connect to, defaults to localhost.")
 	backupDir   = flag.String("backup_dir", "backup", "Where to write BoltDB backups to.")
