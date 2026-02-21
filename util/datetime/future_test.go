@@ -37,6 +37,23 @@ func TestFutureBias(t *testing.T) {
 		// Base date: March 20th 2024 (Wed)
 		// 1st Tue: Mar 5, 2nd Tue: Mar 12, 3rd Tue: Mar 19 (passed)
 		{"3rd Tuesday", time.Date(2025, 3, 18, 12, 0, 0, 0, time.UTC)},
+
+		// Leap year edge case
+		// Base date: March 20th 2024
+		// "Feb 29th" 2024 is past, so it bumps to 2025. 2025-02-29 -> 2025-03-01.
+		{"Feb 29th", time.Date(2025, 3, 1, 12, 0, 0, 0, time.UTC)},
+
+		// Relative day "next Wednesday" when today is Wednesday
+		// Should be next week (March 27th)
+		{"next Wednesday", time.Date(2024, 3, 27, 12, 0, 0, 0, time.UTC)},
+
+		// "this Wednesday" when today is Wednesday
+		// Should be today (March 20th)
+		{"this Wednesday", time.Date(2024, 3, 20, 12, 0, 0, 0, time.UTC)},
+
+		// "last Wednesday" when today is Wednesday
+		// Should be last week (March 13th)
+		{"last Wednesday", time.Date(2024, 3, 13, 12, 0, 0, 0, time.UTC)},
 	}
 
 	for _, test := range tests {
