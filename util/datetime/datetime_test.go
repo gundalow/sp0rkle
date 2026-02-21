@@ -18,7 +18,8 @@ type timeTests []timeTest
 func (tt timeTests) run(t *testing.T, start time.Time) {
 	for i, test := range tt {
 		DPrintf("\nStarting parse of %q\n\n", test.in)
-		ret, err := parse(test.in, start)
+		res, err := parseX(test.in, start)
+		ret := res.Time
 		DPrintf("\nEnding parse of %q\n", test.in)
 		if err != nil || !ret.Equal(test.t) {
 			t.Errorf("Unable to parse test %d\nin: %s\nexp: %s\ngot: %s (err=%v)",
@@ -229,13 +230,13 @@ func TestParseDate(t *testing.T) {
 		{"2/3/68", mkt(2068, 3, 2)},
 		{"2/3/69", mkt(1969, 3, 2)},
 		// T_THE T_INTEGER T_DAYQUAL
-		{"the 1st", mkt(1, 2, 1)},
-		{"the 2nd", mkt(1, 2, 2)},
+		{"the 1st", mkt(2, 2, 1)},
+		{"the 2nd", mkt(2, 2, 2)},
 		{"the 10th", mkt(1, 2, 10)},
 		{"the 29th", mkt(1, 3, 1)},
 		// T_THE T_INTEGER T_DAYQUAL T_OF T_MONTHNAME
-		{"the 1st of January", mkt(1, 1, 1)},
-		{"the 2nd of February", mkt(1, 2, 2)},
+		{"the 1st of January", mkt(2, 1, 1)},
+		{"the 2nd of February", mkt(2, 2, 2)},
 		{"the 10th of March", mkt(1, 3, 10)},
 		{"the 31st of December", mkt(1, 12, 31)},
 		// T_THE T_INTEGER T_DAYQUAL T_OF T_MONTHNAME o_comma T_INTEGER
@@ -434,24 +435,24 @@ func TestParseRelativeMonths(t *testing.T) {
 		{"this december", mkt(6)},
 		{"next december", mkt(6)},
 		{"last december", mkt(-6)},
-		{"january", mkt(-5)},
-		{"this january", mkt(-5)},
+		{"january", mkt(7)},
+		{"this january", mkt(7)},
 		{"next january", mkt(7)},
 		{"last january", mkt(-5)},
-		{"february", mkt(-4)},
-		{"this february", mkt(-4)},
+		{"february", mkt(8)},
+		{"this february", mkt(8)},
 		{"next february", mkt(8)},
 		{"last february", mkt(-4)},
-		{"march", mkt(-3)},
-		{"this march", mkt(-3)},
+		{"march", mkt(9)},
+		{"this march", mkt(9)},
 		{"next march", mkt(9)},
 		{"last march", mkt(-3)},
-		{"april", mkt(-2)},
-		{"this april", mkt(-2)},
+		{"april", mkt(10)},
+		{"this april", mkt(10)},
 		{"next april", mkt(10)},
 		{"last april", mkt(-2)},
-		{"may", mkt(-1)},
-		{"this may", mkt(-1)},
+		{"may", mkt(11)},
+		{"this may", mkt(11)},
 		{"next may", mkt(11)},
 		{"last may", mkt(-1)},
 	}
@@ -468,19 +469,19 @@ func TestAbsDayMonth(t *testing.T) {
 		// ... of implicitly this month
 		{"1st Monday", mkt(2001, 2, 5)},
 		{"1st Wednesday", mkt(2001, 2, 7)},
-		{"1st Thursday", mkt(2001, 2, 1)},
+		{"1st Thursday", mkt(2002, 2, 7)},
 		{"1st Sunday", mkt(2001, 2, 4)},
 		{"2nd Monday", mkt(2001, 2, 12)},
 		{"2nd Wednesday", mkt(2001, 2, 14)},
 		{"2nd Thursday", mkt(2001, 2, 8)},
 		{"2nd Sunday", mkt(2001, 2, 11)},
 		// ... of explicit month
-		{"3rd Saturday of December", mkt(2000, 12, 16)},
-		{"2nd Sunday of January", mkt(2001, 1, 14)},
+		{"3rd Saturday of December", mkt(2001, 12, 15)},
+		{"2nd Sunday of January", mkt(2002, 1, 13)},
 		{"4th Thursday of February", mkt(2001, 2, 22)},
 		{"1st Tuesday of March", mkt(2001, 3, 6)},
 		{"2nd Wednesday of August", mkt(2001, 8, 8)},
-		{"2nd Wednesday of September", mkt(2000, 9, 13)},
+		{"2nd Wednesday of September", mkt(2001, 9, 12)},
 		// ... of explicit month of year
 		{"3rd Tuesday of January 2014", mkt(2014, 1, 21)},
 		{"3rd Friday of January 2014", mkt(2014, 1, 17)},
