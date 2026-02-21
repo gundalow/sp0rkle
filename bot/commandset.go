@@ -57,6 +57,7 @@ func (cs *commandSet) Add(r Runner, prefix string) {
 		logging.Error("Prefix or runner empty when adding command.", prefix)
 		return
 	}
+	prefix = strings.ToLower(prefix)
 	cs.Lock()
 	defer cs.Unlock()
 	if _, ok := cs.set[prefix]; ok {
@@ -71,8 +72,9 @@ func (cs *commandSet) match(txt string) (final Runner, prefixlen int) {
 	cs.RLock()
 	defer cs.RUnlock()
 
+	lowerTxt := strings.ToLower(txt)
 	for prefix, r := range cs.set {
-		if !strings.HasPrefix(txt, prefix) {
+		if !strings.HasPrefix(lowerTxt, prefix) {
 			continue
 		}
 		if final == nil || len(prefix) > prefixlen {
@@ -88,7 +90,8 @@ func (cs *commandSet) possible(txt string) []string {
 	defer cs.RUnlock()
 
 	poss := []string{}
-	words := strings.Fields(txt)
+	lowerTxt := strings.ToLower(txt)
+	words := strings.Fields(lowerTxt)
 	for prefix := range cs.set {
 		for _, w := range words {
 			if strings.Contains(prefix, w) {
