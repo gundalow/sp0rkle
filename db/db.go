@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -26,18 +25,16 @@ type Database interface {
 }
 
 type Collection interface {
-	Get(Key, interface{}) error
-	// GetPR(Key, interface{}) error ?
-	Match(string, string, interface{}) error
-	All(Key, interface{}) error
-	Put(interface{}) error
-	BatchPut(interface{}) error
-	Del(interface{}) error
+	Get(Key, any) error
+	// GetPR(Key, any) error ?
+	Match(string, string, any) error
+	All(Key, any) error
+	Put(any) error
+	BatchPut(any) error
+	Del(any) error
 	Next(Key, ...int) (int, error)
 	// Turn on debugging for this collection.
 	Debug(bool)
-	// So we don't have to do everything at once.
-	Mongo() *mgo.Collection
 }
 
 type C struct {
@@ -55,7 +52,7 @@ func (c *C) Init(db Database, name string, f func(Collection)) {
 }
 
 type Elem interface {
-	Pair() (string, interface{})
+	Pair() (string, any)
 	Bytes() []byte
 	String() string
 }
@@ -65,7 +62,7 @@ type S struct {
 	Name, Value string
 }
 
-func (e S) Pair() (string, interface{}) {
+func (e S) Pair() (string, any) {
 	return e.Name, e.Value
 }
 
@@ -87,7 +84,7 @@ type I struct {
 	Value uint64
 }
 
-func (e I) Pair() (string, interface{}) {
+func (e I) Pair() (string, any) {
 	return e.Name, e.Value
 }
 
@@ -112,7 +109,7 @@ type T struct {
 	Value bool
 }
 
-func (e T) Pair() (string, interface{}) {
+func (e T) Pair() (string, any) {
 	return e.Name, e.Value
 }
 
@@ -138,7 +135,7 @@ type ID struct {
 	Value bson.ObjectId
 }
 
-func (e ID) Pair() (string, interface{}) {
+func (e ID) Pair() (string, any) {
 	return "_id", e.Value
 }
 
@@ -156,23 +153,11 @@ func (e ID) String() string {
 
 type Key interface {
 	String() string
-	// MongoDB repr
-	M() bson.M
 	// BoltDB repr
 	B() ([][]byte, []byte)
 }
 
 type K []Elem
-
-// This is one-way, loses ordering.
-func (k K) M() bson.M {
-	m := bson.M{}
-	for _, e := range k {
-		n, v := e.Pair()
-		m[n] = v
-	}
-	return m
-}
 
 // Successive key elements create nested BoltDB buckets.
 // The final key element is used as the bucket key.

@@ -5,16 +5,9 @@ Getting started, from scratch:
 1.  Install some dependencies.
 
 	```bash
-	sudo apt-get install build-essential bison mongodb
-	sudo apt-get install git bzr
-
-	Ensure you have mongodb 2.x or higher
-	mongod --version
-	db version v2.2.1, pdfile version 4.5
+	sudo apt-get install build-essential bison
+	sudo apt-get install git
 	```
-
-	If not the following page may help
-	https://docs.mongodb.org/manual/administration/install-on-linux/
 
 2.  Install Go.
 
@@ -31,17 +24,10 @@ Getting started, from scratch:
 	mkdir -p $GOPATH/{src,pkg,bin}
 	```
 
-3.  Use the `go` tool to get dependencies. Getting BoltDB
-    deliberately uses `...` so that the `bolt` command-line
-	tool is installed as well.
+3.  Use the `go` tool to get dependencies.
 
 	```bash
-	go get github.com/boltdb/bolt/...
-	go get github.com/fluffle/goirc/client
-	go get github.com/fluffle/golog/logging
-	go get github.com/google/go-github/github
-	go get golang.org/x/oauth2
-	go get gopkg.in/mgo.v2
+	go mod download
 	```
 4.  Clone sp0rkle's code from github.
 
@@ -61,13 +47,11 @@ Getting started, from scratch:
 	git clone http://github.com/fluffle/sp0rkle.git
 	```
 
-5.  Import a recent database backup into MongoDB.
+5.  Import a recent database backup of BoltDB.
 
 	```bash
-	TMP=$(mktemp -d)
-	tar -C $TMP --force-local -jxvf sp0rkle.YYYY-MM-DD.HH:MM.tar.bz2
-	mongorestore -d sp0rkle $TMP/sp0rkle
-	rm -r $TMP
+	# sp0rkle uses BoltDB, simply place your backup file as sp0rkle.boltdb
+	gunzip < sp0rkle.boltdb.YYYY-MM-DD.HH:MM.gz > sp0rkle.boltdb
 	```
 
 	If you don't know where to get a DB backup from, you possibly

@@ -169,59 +169,14 @@ func (rs Reminders) sortByRemindAt() {
 	})
 }
 
-type migrator struct {
-	mongo, bolt db.Collection
-}
-
-func (m *migrator) MigrateTo(newState db.MigrationState) error {
-	if newState != db.MONGO_PRIMARY {
-		return nil
-	}
-	var all Reminders
-	if err := m.mongo.All(db.K{}, &all); err != nil {
-		return err
-	}
-	if err := m.bolt.BatchPut(all); err != nil {
-		logging.Error("Migrating reminders: %v", err)
-		return err
-	}
-	logging.Info("Migrated %d reminders.", len(all))
-	return nil
-}
-
-func (m *migrator) Diff() ([]string, []string, error) {
-	var mAll, bAll Reminders
-	if err := m.mongo.All(db.K{}, &mAll); err != nil {
-		return nil, nil, err
-	}
-	if err := m.bolt.All(db.K{}, &bAll); err != nil {
-		return nil, nil, err
-	}
-	return mAll.Strings(), bAll.Strings(), nil
-}
-
 type Collection struct {
-	db.Both
+	db.C
 }
 
 func Init() *Collection {
-	rc := &Collection{db.Both{}}
-	rc.Both.MongoC.Init(db.Mongo, COLLECTION, mongoIndexes)
-	rc.Both.BoltC.Init(db.Bolt.Indexed(), COLLECTION, nil)
-	m := &migrator{
-		mongo: rc.Both.MongoC,
-		bolt:  rc.Both.BoltC,
-	}
-	rc.Both.Checker.Init(m, COLLECTION)
+	rc := &Collection{}
+	rc.Init(db.Bolt.Indexed(), COLLECTION, nil)
 	return rc
-}
-
-func mongoIndexes(c db.Collection) {
-	for _, k := range []string{"remindat", "from", "to", "tell"} {
-		if err := c.Mongo().EnsureIndexKey(k); err != nil {
-			logging.Error("Couldn't create %s index on sp0rkle.reminders: %v", k, err)
-		}
-	}
 }
 
 func (rc *Collection) GetById(id bson.ObjectId) *Reminder {
@@ -235,7 +190,6 @@ func (rc *Collection) GetById(id bson.ObjectId) *Reminder {
 
 func (rc *Collection) LoadAndPrune() Reminders {
 	// Can't delete from Bolt without loading everything and sorting.
-	// This will work fine in Mongo too, so let's just do that.
 	var all Reminders
 	if err := rc.All(db.K{db.T{"tell", false}}, &all); err != nil {
 		logging.Error("Loading all reminders: %v", err)

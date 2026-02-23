@@ -2,7 +2,7 @@ package factoids
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -10,7 +10,6 @@ import (
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
 	"github.com/fluffle/sp0rkle/util"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -149,39 +148,8 @@ func (fs Factoids) Strings() []string {
 	return s
 }
 
-type migrator struct {
-	mongo, bolt db.Collection
-}
-
-func (m migrator) MigrateTo(newState db.MigrationState) error {
-	if newState != db.MONGO_PRIMARY {
-		return nil
-	}
-	var all Factoids
-	if err := m.mongo.All(db.K{}, &all); err != nil {
-		return err
-	}
-	if err := m.bolt.BatchPut(all); err != nil {
-		logging.Error("Migrating factoids: %v", err)
-		return err
-	}
-	logging.Info("Migrated %d factoid entries.", len(all))
-	return nil
-}
-
-func (m migrator) Diff() ([]string, []string, error) {
-	var mAll, bAll Factoids
-	if err := m.mongo.All(db.K{}, &mAll); err != nil {
-		return nil, nil, err
-	}
-	if err := m.bolt.All(db.K{}, &bAll); err != nil {
-		return nil, nil, err
-	}
-	return mAll.Strings(), bAll.Strings(), nil
-}
-
 type Collection struct {
-	db.Both
+	db.C
 
 	// cache of objectIds for PseudoRand
 	seen map[string]map[bson.ObjectId]bool
@@ -190,27 +158,12 @@ type Collection struct {
 // Wrapper to get hold of a factoid collection handle
 func Init() *Collection {
 	fc := &Collection{
-		Both: db.Both{},
 		seen: make(map[string]map[bson.ObjectId]bool),
 	}
-	fc.Both.MongoC.Init(db.Mongo, COLLECTION, mongoIndexes)
-	fc.Both.BoltC.Init(db.Bolt.Indexed(), COLLECTION, nil)
-	m := &migrator{
-		mongo: fc.Both.MongoC,
-		bolt:  fc.Both.BoltC,
-	}
-	fc.Both.Checker.Init(m, COLLECTION)
+	fc.Init(db.Bolt.Indexed(), COLLECTION, nil)
 	return fc
 }
 
-func mongoIndexes(c db.Collection) {
-	err := c.Mongo().EnsureIndex(mgo.Index{Key: []string{"key"}})
-	if err != nil {
-		logging.Error("Couldn't create index on sp0rkle.factoids: %v", err)
-	}
-}
-
-// Can't call this Count because that'd override mgo.Collection.Count()
 func (fc *Collection) GetCount(key string) int {
 	// TODO(fluffle): less-wasteful GetCount()
 	return len(fc.GetAll(key))
@@ -273,7 +226,7 @@ func (fc *Collection) GetPseudoRand(key string) *Factoid {
 		logging.Debug("Creating seen data for key '%s'.", key)
 		fc.seen[key] = make(map[bson.ObjectId]bool)
 	}
-	res := filtered[rand.Intn(count)]
+	res := filtered[rand.IntN(count)]
 	logging.Debug("Storing id %v for key '%s'.", res.Id(), key)
 	fc.seen[key][res.Id()] = true
 	return res
@@ -298,7 +251,6 @@ func (fc *Collection) GetKeysMatching(regex string) []string {
 }
 
 func (fc *Collection) GetLast(key string) (c *Factoid, m *Factoid, a *Factoid) {
-	// Waaay less efficient for MongoDB but works for both.
 	facts := fc.GetAll(key)
 	for _, fact := range facts {
 		if c == nil || c.Created.Timestamp.Before(fact.Created.Timestamp) {
@@ -315,71 +267,20 @@ func (fc *Collection) GetLast(key string) (c *Factoid, m *Factoid, a *Factoid) {
 }
 
 func (fc *Collection) InfoMR(key string) *FactoidInfo {
-	// MapReduce has no BoltDB equivalent and building one seems excessive.
-	minfo := &FactoidInfo{}
-	binfo := &FactoidInfo{}
-	state := fc.Check()
+	// Bolt, we have to do things manually, which is way easier even if it
+	// does involve maybe slurping all the factoids into a slice, *again*.
+	info := &FactoidInfo{}
+	facts := Factoids{}
+	if err := fc.All(byKey(key), &facts); err != nil {
+		logging.Warn("Factoid InfoMR All failed: %v", err)
+	}
 
-	if state < db.BOLT_ONLY {
-		// Mongo
-		mr := &mgo.MapReduce{
-			Map: `function() { emit("count", {
-				accessed: this.accessed.count,
-				modified: this.modified.count,
-				created: this.created.count
-			})}`,
-			Reduce: `function(k,l) {
-				var sum = { accessed: 0, modified: 0, created: 0 };
-				for (var i = 0; i < l.length; i++) {
-					sum.accessed += l[i].accessed;
-					sum.modified += l[i].modified;
-					sum.created  += l[i].created;
-				}
-				return sum;
-			}`,
-		}
-		var res []struct {
-			Id    int `bson:"_id"`
-			Value FactoidInfo
-		}
-		k := bson.M{}
-		if key != "" {
-			k["key"] = key
-		}
-		info, err := fc.Mongo().Find(k).MapReduce(mr, &res)
-		if err != nil || len(res) == 0 {
-			logging.Warn("Info MR for '%s' failed: %v", key, err)
-		} else {
-			logging.Debug("Info MR mapped %d, emitted %d, produced %d in %d ms.",
-				info.InputCount, info.EmitCount, info.OutputCount, info.Time/1e6)
-			*minfo = res[0].Value
-		}
+	for _, fact := range facts {
+		info.Accessed += fact.Accessed.Count
+		info.Modified += fact.Modified.Count
+		info.Created += fact.Created.Count
 	}
-	if state > db.MONGO_ONLY {
-		// Bolt, we have to do things manually, which is way easier even if it
-		// does involve maybe slurping all the factoids into a slice, *again*.
-		// TODO(fluffle): Add a ForEach() to boltdb wrapper once migrated.
-		facts := Factoids{}
-		if err := fc.Both.BoltC.All(byKey(key), &facts); err != nil {
-			logging.Warn("Factoid InfoMR All failed: %v", err)
-		}
-
-		for _, fact := range facts {
-			binfo.Accessed += fact.Accessed.Count
-			binfo.Modified += fact.Modified.Count
-			binfo.Created += fact.Created.Count
-		}
-	}
-	if (state == db.MONGO_PRIMARY || state == db.BOLT_PRIMARY) &&
-		(binfo.Accessed != minfo.Accessed ||
-			binfo.Modified != minfo.Modified ||
-			binfo.Created != minfo.Created) {
-		logging.Warn("Factoid InfoMR: diff detected!\n\tMongo: %v\n\tBolt: %v", minfo, binfo)
-	}
-	if state >= db.BOLT_PRIMARY {
-		return binfo
-	}
-	return minfo
+	return info
 }
 
 func ParseValue(v string) (ft FactoidType, fv string) {

@@ -1,7 +1,7 @@
 package factdriver
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 
 	"github.com/fluffle/goirc/client"

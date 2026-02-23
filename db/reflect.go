@@ -12,7 +12,7 @@ type slicePtr struct {
 	et reflect.Type
 }
 
-func newSlicePtr(value interface{}) *slicePtr {
+func newSlicePtr(value any) *slicePtr {
 	pv := reflect.ValueOf(value)
 	if pv.Kind() != reflect.Ptr || pv.Elem().Kind() != reflect.Slice {
 		panic("provided value is not a pointer-to-slice")
@@ -43,7 +43,7 @@ func (sp *slicePtr) appendElem(ev reflect.Value) {
 }
 
 // ... I want a pony and this might just give me one.
-func (sp *slicePtr) ponyElem() interface{} {
+func (sp *slicePtr) ponyElem() any {
 	ev := sp.newElem()
 	sp.appendElem(ev)
 	return sp.sv.Index(sp.len() - 1).Addr().Interface()
@@ -51,4 +51,24 @@ func (sp *slicePtr) ponyElem() interface{} {
 
 func (sp *slicePtr) len() int {
 	return sp.sv.Len()
+}
+
+func dupeR(vt reflect.Type, vv reflect.Value) reflect.Value {
+	switch vv.Kind() {
+	case reflect.Ptr:
+		duped := dupeR(vv.Elem().Type(), vv.Elem())
+		ptr := reflect.New(vv.Elem().Type())
+		ptr.Elem().Set(duped)
+		return ptr
+	case reflect.Slice:
+		return reflect.MakeSlice(vt, 0, vv.Cap())
+	default:
+		return reflect.New(vt).Elem()
+	}
+}
+
+// This function rigourously tested for all of 15 minutes
+// at https://play.golang.org/p/IrEWIxm_PEH ;-)
+func dupe(in any) any {
+	return dupeR(reflect.TypeOf(in), reflect.ValueOf(in)).Interface()
 }

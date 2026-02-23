@@ -2,13 +2,12 @@ package urls
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 
 	"github.com/fluffle/golog/logging"
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -91,39 +90,8 @@ func (us Urls) Strings() []string {
 	return s
 }
 
-type migrator struct {
-	mongo, bolt db.Collection
-}
-
-func (m *migrator) MigrateTo(newState db.MigrationState) error {
-	if newState != db.MONGO_PRIMARY {
-		return nil
-	}
-	var all []*Url
-	if err := m.mongo.All(db.K{}, &all); err != nil {
-		return err
-	}
-	if err := m.bolt.BatchPut(all); err != nil {
-		logging.Error("Migrating urls: %v", err)
-		return err
-	}
-	logging.Debug("Migrated %d urls.", len(all))
-	return nil
-}
-
-func (m *migrator) Diff() ([]string, []string, error) {
-	var mAll, bAll Urls
-	if err := m.mongo.All(db.K{}, &mAll); err != nil {
-		return nil, nil, err
-	}
-	if err := m.bolt.All(db.K{}, &bAll); err != nil {
-		return nil, nil, err
-	}
-	return mAll.Strings(), bAll.Strings(), nil
-}
-
 type Collection struct {
-	db.Both
+	db.C
 
 	// Cache of ObjectId's for GetRand.
 	seen map[string]map[bson.ObjectId]bool
@@ -131,30 +99,10 @@ type Collection struct {
 
 func Init() *Collection {
 	uc := &Collection{
-		Both: db.Both{},
 		seen: make(map[string]map[bson.ObjectId]bool),
 	}
-	uc.Both.MongoC.Init(db.Mongo, COLLECTION, mongoIndexes)
-	uc.Both.BoltC.Init(db.Bolt.Indexed(), COLLECTION, nil)
-	m := &migrator{
-		mongo: uc.Both.MongoC,
-		bolt:  uc.Both.BoltC,
-	}
-	uc.Both.Checker.Init(m, COLLECTION)
+	uc.Init(db.Bolt.Indexed(), COLLECTION, nil)
 	return uc
-}
-
-func mongoIndexes(c db.Collection) {
-	err := c.Mongo().EnsureIndex(mgo.Index{Key: []string{"url"}, Unique: true})
-	if err != nil {
-		logging.Error("Couldn't create url index on sp0rkle.urls: %s", err)
-	}
-	for _, idx := range []string{"cachedas", "shortened"} {
-		err := c.Mongo().EnsureIndex(mgo.Index{Key: []string{idx}})
-		if err != nil {
-			logging.Error("Couldn't create %s index on sp0rkle.urls: %s", idx, err)
-		}
-	}
 }
 
 func (uc *Collection) GetById(id bson.ObjectId) *Url {
@@ -225,7 +173,7 @@ func (uc *Collection) GetRand(regex string) *Url {
 		logging.Debug("Creating seen data for regex %q.", regex)
 		uc.seen[regex] = map[bson.ObjectId]bool{}
 	}
-	url := filtered[rand.Intn(count)]
+	url := filtered[rand.IntN(count)]
 	logging.Debug("Storing id %v for regex %q.", url.Id_, regex)
 	uc.seen[regex][url.Id_] = true
 	return url
