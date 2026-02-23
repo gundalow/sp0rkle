@@ -35,6 +35,9 @@ func (m *mongoDatabase) Init(addr string, direct bool) error {
 		return err
 	}
 	info.Direct = direct
+	if info.Timeout == 0 {
+		info.Timeout = 10 * time.Second
+	}
 	s, err := mgo.DialWithInfo(info)
 	if err != nil {
 		return err
