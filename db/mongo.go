@@ -24,13 +24,26 @@ type mongoDatabase struct {
 
 var Mongo = &mongoDatabase{}
 
-func (m *mongoDatabase) Init(db string) error {
+func (m *mongoDatabase) Init(addr string, direct bool) error {
 	m.Lock()
 	defer m.Unlock()
 	if m.sessions != nil {
 		return errors.New("init already called")
 	}
-	s, err := mgo.Dial(db)
+	info, err := mgo.ParseURL(addr)
+	if err != nil {
+		return err
+	}
+	info.Direct = direct
+	if info.Timeout == 0 {
+		info.Timeout = 10 * time.Second
+	}
+	logInfo := *info
+	if logInfo.Password != "" {
+		logInfo.Password = "********"
+	}
+	logging.Debug("Connecting to MongoDB with info: %+v", logInfo)
+	s, err := mgo.DialWithInfo(info)
 	if err != nil {
 		return err
 	}
