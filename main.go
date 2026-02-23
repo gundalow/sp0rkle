@@ -38,6 +38,8 @@ var (
 	boltDB   = flag.String("boltdb", "sp0rkle.boltdb", "Path to boltdb file.")
 	mongoDB  = flag.String("mongodb", "localhost",
 		"Address of MongoDB server to connect to, defaults to localhost.")
+	mongoDirect = flag.Bool("mongo_direct", false,
+		"Force direct connection to MongoDB.")
 	backupDir   = flag.String("backup_dir", "backup", "Where to write BoltDB backups to.")
 	backupEvery = flag.Duration("backup_every", 24*time.Hour, "How often to write backups.")
 	timezone    = flag.String("timezone", "Europe/London", "Default timezone for date/time.")
@@ -60,7 +62,7 @@ func main() {
 
 	// Connect to databases
 
-	if err := db.Mongo.Init(bot.GetSecret(*mongoDB)); err != nil {
+	if err := db.Mongo.Init(bot.GetSecret(*mongoDB), *mongoDirect); err != nil {
 		logging.Fatal("Unable to connect to MongoDB at %q: %v", *mongoDB, err)
 	}
 	defer db.Mongo.Close()
