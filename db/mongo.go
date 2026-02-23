@@ -38,6 +38,11 @@ func (m *mongoDatabase) Init(addr string, direct bool) error {
 	if info.Timeout == 0 {
 		info.Timeout = 10 * time.Second
 	}
+	logInfo := *info
+	if logInfo.Password != "" {
+		logInfo.Password = "********"
+	}
+	logging.Debug("Connecting to MongoDB with info: %+v", logInfo)
 	s, err := mgo.DialWithInfo(info)
 	if err != nil {
 		return err

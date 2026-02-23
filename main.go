@@ -62,7 +62,8 @@ func main() {
 
 	// Connect to databases
 
-	if err := db.Mongo.Init(bot.GetSecret(*mongoDB), *mongoDirect); err != nil {
+	mongoAddr := bot.GetSecret(*mongoDB)
+	if err := db.Mongo.Init(mongoAddr, *mongoDirect); err != nil {
 		logging.Fatal("Unable to connect to MongoDB at %q: %v", *mongoDB, err)
 	}
 	defer db.Mongo.Close()
