@@ -8,8 +8,6 @@ import (
 	"github.com/fluffle/golog/logging"
 	"github.com/fluffle/sp0rkle/bot"
 	"github.com/fluffle/sp0rkle/db"
-	"github.com/fluffle/sp0rkle/util/diff"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -98,63 +96,14 @@ func (ns NickStats) Strings() []string {
 	return s
 }
 
-type migrator struct {
-	mongo, bolt db.Collection
-}
-
-func (m *migrator) MigrateTo(newState db.MigrationState) error {
-	if newState != db.MONGO_PRIMARY {
-		return nil
-	}
-	var all []*NickStat
-	if err := m.mongo.All(db.K{}, &all); err != nil {
-		return err
-	}
-	if err := m.bolt.BatchPut(all); err != nil {
-		logging.Error("Migrating stats entries: %v", err)
-		return err
-	}
-	logging.Info("Migrated %d stats entries.", len(all))
-	return nil
-}
-
-func (m *migrator) Diff() ([]string, []string, error) {
-	var mAll, bAll NickStats
-	if err := m.mongo.All(db.K{}, &mAll); err != nil {
-		return nil, nil, err
-	}
-	if err := m.bolt.All(db.K{}, &bAll); err != nil {
-		return nil, nil, err
-	}
-	return mAll.Strings(), bAll.Strings(), nil
-}
-
 type Collection struct {
-	db.Both
+	db.C
 }
 
 func Init() *Collection {
-	sc := &Collection{db.Both{}}
-	sc.Both.MongoC.Init(db.Mongo, COLLECTION, mongoIndexes)
-	sc.Both.BoltC.Init(db.Bolt.Indexed(), COLLECTION, nil)
-	m := &migrator{
-		mongo: sc.Both.MongoC,
-		bolt:  sc.Both.BoltC,
-	}
-	sc.Both.Checker.Init(m, COLLECTION)
+	sc := &Collection{}
+	sc.Init(db.Bolt.Indexed(), COLLECTION, nil)
 	return sc
-}
-
-func mongoIndexes(c db.Collection) {
-	indexes := [][]string{
-		{"chan", "key"},
-		{"lines"},
-	}
-	for _, key := range indexes {
-		if err := c.Mongo().EnsureIndex(mgo.Index{Key: key}); err != nil {
-			logging.Error("Couldn't create %v index on sp0rkle.stats: %v", key, err)
-		}
-	}
 }
 
 func (sc *Collection) StatsFor(nick, ch string) *NickStat {
@@ -166,35 +115,17 @@ func (sc *Collection) StatsFor(nick, ch string) *NickStat {
 }
 
 func (sc *Collection) TopTen(ch string) []*NickStat {
-	var mRes, bRes NickStats
-	state := sc.Check()
-	if state < db.BOLT_ONLY {
-		q := sc.Mongo().Find(bson.M{"chan": ch}).Sort("-lines").Limit(10)
-		if err := q.All(&mRes); err != nil {
-			logging.Error("Mongo TopTen Find error for channel %s: %v", ch, err)
-		}
+	var res NickStats
+	if err := sc.All(db.K{db.S{"lines", ch}}, &res); err != nil {
+		logging.Error("Bolt TopTen All error for channel %s: %v", ch, err)
 	}
-	if state > db.MONGO_ONLY {
-		if err := sc.Both.BoltC.All(db.K{db.S{"lines", ch}}, &bRes); err != nil {
-			logging.Error("Bolt TopTen All error for channel %s: %v", ch, err)
-		}
-		// TODO(fluffle): Results from Bolt are in ascending order, meh.
-		// TODO(fluffle): Consider supporting asc/desc/limit in db.C interface.
-		for i, j := 0, len(bRes)-1; i < j; i, j = i+1, j-1 {
-			bRes[i], bRes[j] = bRes[j], bRes[i]
-		}
-		if len(bRes) > 10 {
-			bRes = bRes[:10]
-		}
+	// TODO(fluffle): Results from Bolt are in ascending order, meh.
+	// TODO(fluffle): Consider supporting asc/desc/limit in db.C interface.
+	for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+		res[i], res[j] = res[j], res[i]
 	}
-	if state == db.MONGO_PRIMARY || state == db.BOLT_PRIMARY {
-		if unified, err := diff.SortDiff(mRes, bRes); err == diff.ErrDiff {
-			logging.Warn("TopTen diff for channel %s (-mongo, +bolt):\n%s",
-				ch, strings.Join(unified, "\n"))
-		}
+	if len(res) > 10 {
+		res = res[:10]
 	}
-	if state >= db.BOLT_PRIMARY {
-		return bRes
-	}
-	return mRes
+	return res
 }

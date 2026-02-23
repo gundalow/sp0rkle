@@ -3,7 +3,6 @@ package bot
 import (
 	"context"
 	"flag"
-	"io/ioutil"
 	"os"
 	"strings"
 	"sync"
@@ -65,9 +64,6 @@ func Init(ctx context.Context) {
 	Command(unignore, "unignore", "unignore <nick>  -- "+
 		"make the bot unignore <nick> again.")
 
-	// Mongo -> Bolt migration. Run in background goroutine
-	// because some migrations can take a looong time.
-	HandleBG(migrate, client.NOTICE)
 }
 
 func Connect() chan bool {
@@ -124,7 +120,7 @@ func GetSecret(s string) string {
 	if strings.HasPrefix(s, "$") {
 		return os.ExpandEnv(s)
 	} else if strings.HasPrefix(s, "<") {
-		if bytes, err := ioutil.ReadFile(s[1:]); err == nil {
+		if bytes, err := os.ReadFile(s[1:]); err == nil {
 			return strings.TrimSuffix(string(bytes), "\n")
 		}
 		return ""
