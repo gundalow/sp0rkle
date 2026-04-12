@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -24,63 +23,21 @@ const (
 
 type Database interface {
 	C(name string) Collection
-	Live() bool
 }
 
 type Collection interface {
-	Get(Key, interface{}) error
+	Get(Key, any) error
 	// GetPR(Key, interface{}) error ?
-	Match(string, string, interface{}) error
-	All(Key, interface{}) error
-	Put(interface{}) error
-	BatchPut(interface{}) error
-	Del(interface{}) error
+	Match(string, string, any) error
+	All(Key, any) error
+	Put(any) error
+	BatchPut(any) error
+	Del(any) error
 	Next(Key, ...int) (int, error)
-	// Referential integrity checks are a thing
-	Fsck(any) error
 	// Turn on debugging for this collection.
 	Debug(bool)
 	// So we don't have to do everything at once.
 	Mongo() *mgo.Collection
-}
-
-type unimplementedCollection struct {}
-var UnimplementedErr = errors.New("unimplemented")
-
-func (unimplementedCollection) Get(Key, any) error {
-	return UnimplementedErr
-}
-
-func (unimplementedCollection) Match(string, string, any) error {
-	return UnimplementedErr
-}
-
-func (unimplementedCollection) All(Key, any) error {
-	return UnimplementedErr
-}
-
-func (unimplementedCollection) Put(any) error {
-	return UnimplementedErr
-}
-
-func (unimplementedCollection) BatchPut(any) error {
-	return UnimplementedErr
-}
-
-func (unimplementedCollection) Del(any) error {
-	return UnimplementedErr
-}
-
-func (unimplementedCollection) Next(Key, ...int) (int, error) {
-	return 0, UnimplementedErr
-}
-
-func (unimplementedCollection) Debug(bool) {}
-
-func (unimplementedCollection) Fsck(any) error { return nil }
-
-func (unimplementedCollection) Mongo() *mgo.Collection {
-	panic("holy shit you are bad at this")
 }
 
 type C struct {
@@ -89,10 +46,6 @@ type C struct {
 }
 
 func (c *C) Init(db Database, name string, f func(Collection)) {
-	if !db.Live() {
-		c.Collection = unimplementedCollection{}
-		return
-	}
 	c.Do(func() {
 		c.Collection = db.C(name)
 		if f != nil {
@@ -102,7 +55,7 @@ func (c *C) Init(db Database, name string, f func(Collection)) {
 }
 
 type Elem interface {
-	Pair() (string, interface{})
+	Pair() (string, any)
 	Bytes() []byte
 	String() string
 }
@@ -112,7 +65,7 @@ type S struct {
 	Name, Value string
 }
 
-func (e S) Pair() (string, interface{}) {
+func (e S) Pair() (string, any) {
 	return e.Name, e.Value
 }
 
@@ -134,7 +87,7 @@ type I struct {
 	Value uint64
 }
 
-func (e I) Pair() (string, interface{}) {
+func (e I) Pair() (string, any) {
 	return e.Name, e.Value
 }
 
@@ -159,7 +112,7 @@ type T struct {
 	Value bool
 }
 
-func (e T) Pair() (string, interface{}) {
+func (e T) Pair() (string, any) {
 	return e.Name, e.Value
 }
 
@@ -185,7 +138,7 @@ type ID struct {
 	Value bson.ObjectId
 }
 
-func (e ID) Pair() (string, interface{}) {
+func (e ID) Pair() (string, any) {
 	return "_id", e.Value
 }
 

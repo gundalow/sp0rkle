@@ -6,7 +6,6 @@ import (
 	"context"
 	_ "expvar"
 	"flag"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -35,7 +34,6 @@ import (
 
 var (
 	httpPort = flag.String("http", ":6666", "Port to serve HTTP requests on.")
-	boltOnly = flag.Bool("bolt_only", false, "Die, mongo, die.")
 	boltDB   = flag.String("boltdb", "sp0rkle.boltdb", "Path to boltdb file.")
 	mongoDB  = flag.String("mongodb", "localhost",
 		"Address of MongoDB server to connect to, defaults to localhost.")
@@ -52,23 +50,16 @@ func main() {
 		logging.Fatal("Failed to set default timezone from --timezone=%q: %v", *timezone, err)
 	}
 
-	// Slightly more random than 1.
-	rand.Seed(time.Now().UnixNano() * int64(os.Getpid()))
-
 	// Initialise bot state
 	ctx := context.Background()
 	bot.Init(ctx)
 
 	// Connect to databases
-	db.BoltOnly = *boltOnly
-	if *boltOnly {
-		logging.Info("Not connecting to mongodb.")
-	} else {
-		if err := db.Mongo.Init(bot.GetSecret(*mongoDB)); err != nil {
-			logging.Fatal("Unable to connect to MongoDB at %q: %v", *mongoDB, err)
-		}
-		defer db.Mongo.Close()
+
+	if err := db.Mongo.Init(bot.GetSecret(*mongoDB)); err != nil {
+		logging.Fatal("Unable to connect to MongoDB at %q: %v", *mongoDB, err)
 	}
+	defer db.Mongo.Close()
 	if err := db.Bolt.Init(*boltDB, *backupDir, *backupEvery); err != nil {
 		logging.Fatal("Unable to open BoltDB file %q: %v", *boltDB, err)
 	}
@@ -95,8 +86,8 @@ func main() {
 	go func() {
 		called := new(int32)
 		sigint := make(chan os.Signal, 1)
-		signal.Notify(sigint, syscall.SIGINT)
-		for _ = range sigint {
+		signal.Notify(sigint, syscall.SIGINT, syscall.SIGTERM)
+		for range sigint {
 			if atomic.AddInt32(called, 1) > 1 {
 				logging.Fatal("Recieved multiple interrupts, dying.")
 			}

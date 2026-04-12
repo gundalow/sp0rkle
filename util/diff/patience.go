@@ -6,7 +6,7 @@ package diff
 
 import (
 	"errors"
-	"sort"
+	"slices"
 )
 
 var (
@@ -223,7 +223,6 @@ func patienceDiff(a, b []string) []diff {
 
 func Unified(a, b []string) ([]string, error) {
 	diffs := patienceDiff(a, b)
-	println(len(diffs))
 	err := ErrDiff
 	if len(diffs) == 0 || len(diffs) == 1 && diffs[0].op == equal {
 		err = nil
@@ -252,7 +251,7 @@ type stringSlicer interface {
 	Strings() []string
 }
 
-func stringSlices(a, b interface{}) ([]string, []string, bool) {
+func stringSlices(a, b any) ([]string, []string, bool) {
 	ass, aok := a.(stringSlicer)
 	bss, bok := b.(stringSlicer)
 	if !(aok && bok) {
@@ -261,17 +260,17 @@ func stringSlices(a, b interface{}) ([]string, []string, bool) {
 	return ass.Strings(), bss.Strings(), true
 }
 
-func SortDiff(a, b interface{}) ([]string, error) {
+func SortDiff(a, b any) ([]string, error) {
 	astrs, bstrs, ok := stringSlices(a, b)
 	if !ok {
 		return nil, ErrNotDiffable
 	}
-	sort.Strings(astrs)
-	sort.Strings(bstrs)
+	slices.Sort(astrs)
+	slices.Sort(bstrs)
 	return Unified(astrs, bstrs)
 }
 
-func Diff(a, b interface{}) ([]string, error) {
+func Diff(a, b any) ([]string, error) {
 	astrs, bstrs, ok := stringSlices(a, b)
 	if !ok {
 		return nil, ErrNotDiffable
