@@ -81,7 +81,7 @@ func (i *indexedDatabase) C(name string) Collection {
 		return err
 	})
 	if err != nil {
-		logging.Fatal("Creating BoltDB bucket failed: %v")
+		logging.Fatal("Creating BoltDB bucket failed: %v", err)
 	}
 	return &indexedBucket{name: name, vals: vals, idxs: idxs, db: i.db}
 }
