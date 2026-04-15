@@ -8,5 +8,4 @@ coverage:
       default:
         enabled: no
 
-comment:
-  behavior: new
+comment: off
