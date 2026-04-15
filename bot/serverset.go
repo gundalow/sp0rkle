@@ -152,14 +152,14 @@ func (ss *serverSet) Handle(conn *client.Conn, line *client.Line) {
 
 // HandleAll() registers Handlers with all the servers in the set
 func (ss *serverSet) HandleAll(ev string, h client.Handler) {
-	for conn, _ := range ss.servers {
+	for conn := range ss.servers {
 		conn.Handle(ev, h)
 	}
 }
 
 // HandleAllBG() registers background Handlers with all the servers in the set
 func (ss *serverSet) HandleAllBG(ev string, h client.Handler) {
-	for conn, _ := range ss.servers {
+	for conn := range ss.servers {
 		conn.HandleBG(ev, h)
 	}
 }

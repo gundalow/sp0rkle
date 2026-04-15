@@ -96,7 +96,7 @@ func main() {
 		called := new(int32)
 		sigint := make(chan os.Signal, 1)
 		signal.Notify(sigint, syscall.SIGINT)
-		for _ = range sigint {
+		for range sigint {
 			if atomic.AddInt32(called, 1) > 1 {
 				logging.Fatal("Recieved multiple interrupts, dying.")
 			}
