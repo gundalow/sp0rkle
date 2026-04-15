@@ -4,4 +4,6 @@ coverage:
       default:
         target: 10%
     # Disable patch coverage to avoid noise
-    patch: off
+    patch:
+      default:
+        enabled: no
