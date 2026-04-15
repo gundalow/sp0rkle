@@ -46,7 +46,7 @@ func (k *keyedDatabase) C(name string) Collection {
 		return err
 	})
 	if err != nil {
-		logging.Fatal("Creating BoltDB bucket failed: %v")
+		logging.Fatal("Creating BoltDB bucket failed: %v", err)
 	}
 	return &keyedBucket{name: n, db: k.db}
 }
