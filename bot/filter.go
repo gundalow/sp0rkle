@@ -1,6 +1,11 @@
 package bot
 
-import "github.com/fluffle/goirc/client"
+import (
+	"strings"
+
+	"github.com/fluffle/goirc/client"
+	"github.com/fluffle/sp0rkle/collections/conf"
+)
 
 type LineFilter interface {
 	ShouldProcess(line *client.Line) bool
@@ -10,6 +15,17 @@ type LineFilterFunc func(line *client.Line) bool
 
 func (lf LineFilterFunc) ShouldProcess(line *client.Line) bool {
 	return lf(line)
+}
+
+type nickIgnoreFilter struct {
+	ns conf.Namespace
+}
+
+func (nf nickIgnoreFilter) ShouldProcess(line *client.Line) bool {
+	if line.Nick == "" {
+		return true
+	}
+	return nf.ns.String(strings.ToLower(line.Nick)) == ""
 }
 
 type FilterPipeline struct {
