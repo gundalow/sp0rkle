@@ -12,9 +12,10 @@ import (
 type HandlerFunc func(*Context)
 
 func (hf HandlerFunc) Handle(conn *client.Conn, line *client.Line) {
-	if ctx := reqContext(conn, line); ctx != nil {
-		hf(ctx)
+	if !bot.filters.ShouldProcess(line) {
+		return
 	}
+	hf(reqContext(conn, line))
 }
 
 type Runner interface {
@@ -107,10 +108,13 @@ func (cs *commandSet) possible(txt string) []string {
 
 // Implement client.Handler so commandSet can Handle things directly.
 func (cs *commandSet) Handle(conn *client.Conn, line *client.Line) {
+	if !bot.filters.ShouldProcess(line) {
+		return
+	}
 	// This is a dirty hack to treat factoid additions as a special
 	// case, since they may begin with command string prefixes.
 	ctx := reqContext(conn, line)
-	if ctx == nil || util.IsFactoidAddition(line.Text()) {
+	if util.IsFactoidAddition(line.Text()) {
 		return
 	}
 	if r, ln := cs.match(ctx.Text()); ctx.Addressed && r != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/fluffle/goirc/client"
 	"github.com/fluffle/golog/logging"
+	"github.com/fluffle/sp0rkle/collections/conf"
 )
 
 // This is here because I'm not sure where better to put it...
@@ -27,6 +28,7 @@ type botData struct {
 	rewriters RewriteSet
 	commands  CommandSet
 	pollers   PollerSet
+	filters   *FilterPipeline
 }
 
 var bot *botData
@@ -45,7 +47,9 @@ func Init(ctx context.Context) {
 		commands:  newCommandSet(),
 		rewriters: newRewriteSet(),
 		pollers:   newPollerSet(),
+		filters:   &FilterPipeline{},
 	}
+
 
 	// This is a special handler that dispatches commands from the command set
 	bot.servers.HandleAll(client.PRIVMSG, bot.commands)
@@ -76,6 +80,7 @@ func Connect() chan bool {
 		logging.Warn("Already connected to servers.")
 	}
 	bot.connected = true
+	bot.filters.Add(&nickIgnoreFilter{ns: conf.Ns(ignoreNs)})
 	return bot.servers.Connect()
 }
 
@@ -89,6 +94,7 @@ func Shutdown() {
 		logging.Warn("Not connected to servers.")
 	}
 	bot.connected = false
+	bot.filters = &FilterPipeline{}
 	bot.servers.Shutdown(false)
 }
 
