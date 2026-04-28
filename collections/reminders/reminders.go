@@ -64,16 +64,13 @@ func (r *Reminder) Indexes() []db.Key {
 	// From and To are not unique so we use a millisecond timestamp from
 	// the reminder to differentiate and sort. Tells don't set RemindAt,
 	// so we use the create timestamp instead.
-	//
-	// bson serialization truncates to millisecond so when timestamps
-	// roundtrip they will invalidate the indexes unless we do too.
-	ts := uint64(r.RemindAt.UnixMilli())
+	ts := r.RemindAt
 	if r.Tell {
-		ts = uint64(r.Created.UnixMilli())
+		ts = r.Created
 	}
 	return []db.Key{
-		db.K{db.T{"tell", r.Tell}, db.S{"from", r.From}, db.I{"ts", ts}},
-		db.K{db.T{"tell", r.Tell}, db.S{"to", r.To}, db.I{"ts", ts}},
+		db.K{db.T{"tell", r.Tell}, db.S{"from", r.From}, db.TS{"ts", ts}},
+		db.K{db.T{"tell", r.Tell}, db.S{"to", r.To}, db.TS{"ts", ts}},
 	}
 }
 
