@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/fluffle/sp0rkle/util/datetime"
 	"github.com/fluffle/sp0rkle/util/bson"
 )
 
@@ -193,6 +195,27 @@ func (e ID) Bytes() []byte {
 
 func (e ID) String() string {
 	return fmt.Sprintf("_id: %s", e.Value)
+}
+
+// Timestamp key element.
+// BSON stores timestamps with millisecond precision, so this element
+// automatically truncates time.Time to milliseconds before encoding,
+// ensuring index keys remain consistent after a BSON roundtrip.
+type TS struct {
+	Name  string
+	Value time.Time
+}
+
+func (e TS) Pair() (string, any) {
+	return e.Name, uint64(e.Value.UnixMilli())
+}
+
+func (e TS) Bytes() []byte {
+	return I{Name: e.Name, Value: uint64(e.Value.UnixMilli())}.Bytes()
+}
+
+func (e TS) String() string {
+	return fmt.Sprintf("%s: %s", e.Name, datetime.Format(e.Value))
 }
 
 type Key interface {
