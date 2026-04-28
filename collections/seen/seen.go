@@ -99,8 +99,7 @@ func (n *Nick) Indexes() []db.Key {
 	// This means the results of All() would still be in timestamp order.
 	return []db.Key{
 		db.K{db.S{"nick", n.Nick.Lower()}, db.S{"action", n.Action}},
-		// NOTE: bson serialization truncates to millisecond precision!
-		db.K{db.S{"key", n.Nick.Lower()}, db.I{"ts", uint64(n.Timestamp.UnixMilli())}},
+		db.K{db.S{"key", n.Nick.Lower()}, db.TS{"ts", n.Timestamp}},
 	}
 }
 
