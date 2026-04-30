@@ -3,6 +3,7 @@ package db
 import (
 	"bytes"
 	"encoding/binary"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,5 +118,71 @@ func TestTS_BytesMatchesI(t *testing.T) {
 
 	if !bytes.Equal(ts.Bytes(), i.Bytes()) {
 		t.Errorf("TS.Bytes() = %q, but I.Bytes() = %q — they must match", ts.Bytes(), i.Bytes())
+	}
+}
+
+func TestK_Valid(t *testing.T) {
+	tests := []struct {
+		name    string
+		key     K
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name:    "empty key is valid",
+			key:     K{},
+			wantErr: false,
+		},
+		{
+			name:    "valid string elements",
+			key:     K{S{"key", "value"}, S{"ns", "channel"}},
+			wantErr: false,
+		},
+		{
+			name:    "valid string with USEP in value",
+			key:     K{S{"key", "val\x1fue"}},
+			wantErr: false,
+		},
+		{
+			name:    "valid integer element",
+			key:     K{I{"count", 42}},
+			wantErr: false,
+		},
+		{
+			name:    "valid boolean element",
+			key:     K{T{"flag", true}},
+			wantErr: false,
+		},
+		{
+			name:    "USEP in string name",
+			key:     K{S{"na\x1fme", "value"}},
+			wantErr: true,
+			errMsg:  "name contains USEP",
+		},
+		{
+			name:    "USEP in second element name",
+			key:     K{S{"first", "ok"}, S{"sec\x1fond", "value"}},
+			wantErr: true,
+			errMsg:  "name contains USEP",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.key.Valid()
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("K.Valid() expected error, got nil")
+					return
+				}
+				if !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("K.Valid() error = %q, want substring %q", err.Error(), tt.errMsg)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("K.Valid() unexpected error: %v", err)
+				}
+			}
+		})
 	}
 }

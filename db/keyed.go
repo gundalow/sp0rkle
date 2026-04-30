@@ -174,7 +174,11 @@ func (bucket *keyedBucket) Put(value any) error {
 	if !ok {
 		return bucket.error("Put(): don't know how to put value %#v", value)
 	}
-	elems, last := keyer.K().B()
+	key := keyer.K()
+	if err := key.Valid(); err != nil {
+		return bucket.error("Put(): invalid key for %T: %w", keyer, err)
+	}
+	elems, last := key.B()
 	if len(last) == 0 {
 		return bucket.error("Put(): can't put value with empty key")
 	}
@@ -204,6 +208,9 @@ func (bucket *keyedBucket) BatchPut(value any) error {
 
 	for i := range vv.Len() {
 		keyer, _ := vv.Index(i).Interface().(Keyer)
+		if err := keyer.K().Valid(); err != nil {
+			return bucket.error("BatchPut(): invalid key for %T: %w", keyer, err)
+		}
 		elems, last := keyer.K().B()
 		if len(last) == 0 {
 			return bucket.error("BatchPut(): can't put value with empty key")
@@ -240,7 +247,11 @@ func (bucket *keyedBucket) Del(value any) error {
 	if !ok {
 		return bucket.error("Del(): don't know how to delete value %#v", value)
 	}
-	elems, last := keyer.K().B()
+	key := keyer.K()
+	if err := key.Valid(); err != nil {
+		return bucket.error("Del(): invalid key for %T: %w", keyer, err)
+	}
+	elems, last := key.B()
 	if len(last) == 0 {
 		return bucket.error("Del(): refusing to delete everything")
 	}

@@ -222,6 +222,8 @@ type Key interface {
 	String() string
 	// BoltDB repr
 	B() ([][]byte, []byte)
+	// Valid checks that no element name contains USEP.
+	Valid() error
 }
 
 type K []Elem
@@ -245,4 +247,20 @@ func (k K) String() string {
 		s[i] = e.String()
 	}
 	return "K<" + strings.Join(s, ", ") + ">"
+}
+
+// Valid checks that no element name contains USEP.
+// This prevents key collisions where different name/value pairs produce
+// identical byte keys (e.g. S{"a", "\x1fb"} collides with S{"a\x1f", "b"}).
+// Values are not checked, because a USEP-free name guarantees the first
+// USEP byte is always the separator, eliminating ambiguity, and the binary
+// serializations of integers and object IDs may contain USEP.
+func (k K) Valid() error {
+	for i, e := range k {
+		name, _ := e.Pair()
+		if strings.IndexByte(name, USEP) >= 0 {
+			return fmt.Errorf("db.K[%d] (%T) name contains USEP: %q", i, e, name)
+		}
+	}
+	return nil
 }

@@ -256,6 +256,11 @@ func (bucket *indexedBucket) Put(value any) error {
 	if err != nil {
 		return err
 	}
+	for _, key := range indexer.Indexes() {
+		if err := key.Valid(); err != nil {
+			return bucket.error("Put(): invalid key for %T: %w", indexer, err)
+		}
+	}
 	return bucket.db.Update(func(tx *bbolt.Tx) error {
 		return bucket.putTx(tx, indexer, data)
 	})
@@ -276,6 +281,11 @@ func (bucket *indexedBucket) BatchPut(value any) error {
 
 	for i := range vv.Len() {
 		indexer, _ := vv.Index(i).Interface().(Indexer)
+		for _, key := range indexer.Indexes() {
+			if err := key.Valid(); err != nil {
+				return bucket.error("BatchPut(): invalid key for %T: %w", indexer, err)
+			}
+		}
 		data, err := toBson(vv.Index(i).Interface())
 		if err != nil {
 			return err
@@ -358,6 +368,11 @@ func (bucket *indexedBucket) Del(value any) error {
 	indexer, ok := value.(Indexer)
 	if !ok {
 		return bucket.error("Del(): don't know how to delete value %#v", value)
+	}
+	for _, key := range indexer.Indexes() {
+		if err := key.Valid(); err != nil {
+			return bucket.error("Del(): invalid key for %T: %w", indexer, err)
+		}
 	}
 	return bucket.db.Update(func(tx *bbolt.Tx) error {
 		if err := bucket.values(tx).Delete(toPointer(indexer)); err != nil {
