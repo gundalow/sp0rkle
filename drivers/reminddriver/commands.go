@@ -67,6 +67,7 @@ func set(ctx *bot.Context) {
 	z := datetime.ZoneOrLocal(conf.Zone(ctx.Nick))
 	// Parse the reminder time from the input.
 	at, err, reminder, timestr := time.Now(), error(nil), "", ""
+	nextUsed := false
 	for i := 1; i+1 < len(s); i++ {
 		lc := strings.ToLower(s[i])
 		if lc == "in" || lc == "at" || lc == "on" {
@@ -78,8 +79,10 @@ func set(ctx *bot.Context) {
 		} else {
 			continue
 		}
-		at, err = datetime.ParseZ(timestr, z)
+		res, err := datetime.ParseXZ(timestr, z)
 		if err == nil {
+			at = res.Time
+			nextUsed = res.NextUsed
 			reminder = strings.Join(s[1:i], " ")
 			break
 		}
@@ -93,10 +96,6 @@ func set(ctx *bot.Context) {
 		return
 	}
 	now := time.Now()
-	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, datetime.TZ())
-	if at.Before(now) && at.After(start) {
-		at = at.Add(24 * time.Hour)
-	}
 	if at.Before(now) {
 		ctx.ReplyN("Time %q is in the past.", timestr)
 		return
@@ -115,7 +114,11 @@ func set(ctx *bot.Context) {
 	}
 	// Any previously-generated list of reminders is now obsolete.
 	delete(listed, ctx.Nick)
-	ctx.ReplyN("%s", r.Acknowledge())
+	ack := r.Acknowledge()
+	if nextUsed {
+		ack += " (Note: 'next' is ambiguous, I've interpreted it as the coming occurrence)"
+	}
+	ctx.ReplyN("%s", ack)
 	Remind(r, ctx)
 }
 
@@ -130,13 +133,15 @@ func snooze(ctx *bot.Context) {
 	z := datetime.ZoneOrLocal(conf.Zone(ctx.Nick))
 	now := time.Now().In(z)
 	at := now.Add(30 * time.Minute)
+	nextUsed := false
 	if ctx.Text() != "" {
-		var err error
-		at, err = datetime.ParseZ(ctx.Text(), z)
+		res, err := datetime.ParseXZ(ctx.Text(), z)
 		if err != nil {
 			ctx.ReplyN("Couldn't parse time string %q: %v.", ctx.Text(), err)
 			return
 		}
+		at = res.Time
+		nextUsed = res.NextUsed
 		if at.Before(now) {
 			ctx.ReplyN("You can't snooze reminder into the past, fool.")
 			return
@@ -149,7 +154,11 @@ func snooze(ctx *bot.Context) {
 		return
 	}
 	delete(listed, ctx.Nick)
-	ctx.ReplyN("%s", r.Acknowledge())
+	ack := r.Acknowledge()
+	if nextUsed {
+		ack += " (Note: 'next' is ambiguous, I've interpreted it as the coming occurrence)"
+	}
+	ctx.ReplyN("%s", ack)
 	Remind(r, ctx)
 }
 

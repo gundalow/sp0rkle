@@ -115,7 +115,7 @@ func (r *Reminder) Reply() (s string) {
 func (r *Reminder) Acknowledge() (s string) {
 	switch {
 	case r.Tell:
-		s = fmt.Sprintf("okay, i'll tell %s %s when I see them",
+		return fmt.Sprintf("okay, i'll tell %s %s when I see them",
 			r.Target, r.Reminder)
 	case r.From == r.To:
 		s = fmt.Sprintf("okay, i'll remind you %s at %s",
@@ -124,6 +124,9 @@ func (r *Reminder) Acknowledge() (s string) {
 		s = fmt.Sprintf("okay, i'll remind %s %s at %s",
 			r.Target, r.Reminder, r.At())
 	}
+	if r.RemindAt.Year() > time.Now().Year() {
+		s += " (NEXT YEAR)"
+	}
 	return
 }
 
@@ -131,11 +134,11 @@ func (r *Reminder) List(nick string) (s string) {
 	nick = strings.ToLower(nick)
 	switch {
 	case r.Tell && nick == r.From:
-		s = fmt.Sprintf("you asked me to tell %s %s",
+		return fmt.Sprintf("you asked me to tell %s %s",
 			r.Target, r.Reminder)
 	case r.Tell && nick == r.To:
 		// this is somewhat unlikely, as it should have triggered already
-		s = fmt.Sprintf("%s asked me to tell you %s -- and now I have!",
+		return fmt.Sprintf("%s asked me to tell you %s -- and now I have!",
 			r.Source, r.Reminder)
 	case nick == r.From && nick == r.To:
 		s = fmt.Sprintf("you asked me to remind you %s, at %s",
@@ -149,6 +152,9 @@ func (r *Reminder) List(nick string) (s string) {
 	default:
 		s = fmt.Sprintf("%s asked me to remind %s %s, at %s",
 			r.Source, r.Target, r.Reminder, r.At())
+	}
+	if !r.Tell && r.RemindAt.Year() > time.Now().Year() {
+		s += " (NEXT YEAR)"
 	}
 	return
 }

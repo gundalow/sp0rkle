@@ -132,11 +132,15 @@ type dateLexer struct {
 	*util.Lexer
 	hourfmt, ampmfmt, zonefmt string
 	rel                       time.Time // base time any relative offsets are computed against
+	originalRel               time.Time // base time before any modifications
 	time, date                time.Time // takes care of absolute time and date specs
 	day                       int       // takes care of absolute day of relative month
 	offsets                   relTime   // takes care of +- ymd hms
 	days                      relDays   // takes care of specific days into future
 	months                    relMonths // takes care of specific months into future
+	yearSet                   bool      // takes care of whether the year was explicitly set
+	nextUsed                  bool      // takes care of whether the 'next' token was used
+	pastRequested             bool      // takes care of whether 'last' or 'ago' was used
 	states                    lexerState
 	errors                    []string
 }
@@ -175,6 +179,13 @@ func (l *dateLexer) Lex(lval *yySymType) int {
 		pos := l.Pos()
 		input := l.Scan(unicode.IsLetter)
 		if tok, ok := tokenMaps.Lookup(strings.ToUpper(input), lval); ok {
+			upper := strings.ToUpper(input)
+			if upper == "NEXT" {
+				l.nextUsed = true
+			}
+			if upper == "LAST" || tok == T_AGO {
+				l.pastRequested = true
+			}
 			return tok
 		}
 		// No token recognised, but it could be a zone in IANA format!
@@ -210,6 +221,7 @@ func (l *dateLexer) setUnix(epoch int64) {
 		l.Error("unix timestamp plus other time/date specifier")
 		return
 	}
+	l.yearSet = true
 	l.time = time.Unix(epoch, 0)
 	l.date = l.time
 }
@@ -248,6 +260,9 @@ func (l *dateLexer) setDate(y, m, d int) {
 		l.Error("Parsed two dates")
 		return
 	}
+	if y != 0 {
+		l.yearSet = true
+	}
 	l.date = time.Date(y, time.Month(m), d, 0, 0, 0, 0, time.Local)
 }
 
@@ -265,10 +280,14 @@ func (l *dateLexer) setDays(d, n int, year ...int) {
 	if l.state(HAVE_DAYS, true) {
 		l.Error("Parsed two days")
 	}
+	if n < 0 {
+		l.pastRequested = true
+	}
 	l.days = relDays{time.Weekday(d), n, 0}
 	if len(year) > 0 {
 		l.state(HAVE_DYEAR, true)
 		l.days.year = year[0]
+		l.yearSet = true
 	}
 }
 
@@ -292,15 +311,20 @@ func (l *dateLexer) setMonths(m, n int, year ...int) {
 		l.Error("Parsed two months")
 		return
 	}
+	if n < 0 {
+		l.pastRequested = true
+	}
 	l.months = relMonths{time.Month(m), n, 0}
 	if len(year) > 0 {
 		l.state(HAVE_MYEAR, true)
 		l.months.year = year[0]
+		l.yearSet = true
 	}
 }
 
 func (l *dateLexer) setYear(year int) {
 	DPrintf("Setting year to %d\n", year)
+	l.yearSet = true
 	if l.state(HAVE_DATE) {
 		l.date = time.Date(year, l.date.Month(), l.date.Day(),
 			0, 0, 0, 0, time.Local)
@@ -324,6 +348,7 @@ func (l *dateLexer) setYMD(ymd int, ln int) {
 		}
 	}
 	DPrintf("Setting YYYY-MM-DD to %04d-%02d-%02d\n", year, month, day)
+	l.yearSet = true
 	l.setDate(year, month, day)
 }
 
@@ -363,6 +388,9 @@ func (l *dateLexer) resolveDate() {
 	}
 	h, n, s := l.rel.Clock()
 	l.rel = time.Date(y, m, d, h, n, s, 0, l.rel.Location())
+	if !l.yearSet && l.rel.Before(l.originalRel) {
+		l.rel = l.rel.AddDate(1, 0, 0)
+	}
 }
 
 func (l *dateLexer) resolveDay() {
@@ -376,34 +404,38 @@ func (l *dateLexer) dayOffset() {
 	// refers to the coming <day> unless it refers to the day of this year
 	// or *today* whilst "next <day>" *always* refers to the coming <day>.
 	diff := int(l.days.day - l.rel.Weekday())
-	if diff < 0 && l.days.num <= 0 {
-		DPrintf("Day offset %d->%d, diff=%d.\n", l.days.num, l.days.num+1, diff)
-		l.days.num++
-	} else if diff > 0 && l.days.num > 0 {
-		DPrintf("Day offset %d->%d, diff=%d.\n", l.days.num, l.days.num-1, diff)
-		l.days.num--
+	num := l.days.num
+	if diff < 0 && num <= 0 {
+		DPrintf("Day offset %d->%d, diff=%d.\n", num, num+1, diff)
+		num++
+	} else if diff > 0 && num > 0 {
+		DPrintf("Day offset %d->%d, diff=%d.\n", num, num-1, diff)
+		num--
 	}
-	l.rel = l.rel.AddDate(0, 0, l.days.num*7+diff)
+	l.rel = l.rel.AddDate(0, 0, num*7+diff)
 }
 
 func (l *dateLexer) monthOffset() {
 	diff := int(l.months.month - l.rel.Month())
-	if l.months.num == 0 {
+	num := l.months.num
+	if num == 0 {
 		// If just "march" or "this march" find closest month
-		// preferring 6 months in future over 6 months in past
-		diff = ((diff + 5) % 12) - 5
+		// preferring future over past
+		if diff < 0 {
+			diff += 12
+		}
 		DPrintf("Month offset %d months\n", diff)
 		l.rel = l.rel.AddDate(0, diff, 0)
 		return
 	}
-	if diff < 0 && l.months.num < 0 {
-		DPrintf("Month offset %d->%d, diff=%d.\n", l.months.num, l.months.num+1, diff)
-		l.months.num++
-	} else if diff > 0 && l.months.num > 0 {
-		DPrintf("Month offset %d->%d, diff=%d.\n", l.months.num, l.months.num-1, diff)
-		l.months.num--
+	if diff < 0 && num < 0 {
+		DPrintf("Month offset %d->%d, diff=%d.\n", num, num+1, diff)
+		num++
+	} else if diff > 0 && num > 0 {
+		DPrintf("Month offset %d->%d, diff=%d.\n", num, num-1, diff)
+		num--
 	}
-	l.rel = l.rel.AddDate(0, l.months.num*12+diff, 0)
+	l.rel = l.rel.AddDate(0, num*12+diff, 0)
 }
 
 func (l *dateLexer) resolveDMY() {
@@ -442,6 +474,10 @@ func (l *dateLexer) resolveDMY() {
 		// this is num'th weekday of month, so we need to offset from "0th"
 		l.rel = mkrel(l.rel.Year(), l.rel.Month(), 0)
 		l.dayOffset()
+		if !l.yearSet && !l.pastRequested && l.rel.Before(l.originalRel) {
+			l.rel = mkrel(l.rel.Year()+1, l.months.month, 0)
+			l.dayOffset()
+		}
 	case HAVE_MYEAR:
 		DPrintf("MYEAR\n")
 		// These on their own are a little odd but probably due to the hack at
@@ -506,27 +542,46 @@ func (l *dateLexer) resolve() (time.Time, error) {
 		l.resolveDMY()
 		DPrintf("HAVE_DMY after: %s %s\n", l.rel.Weekday(), l.rel)
 	}
+	if (l.states&(HAVE_DATE|HAVE_DAY|HAVE_DAYS|HAVE_MONTHS)) != 0 && !l.yearSet && !l.pastRequested && l.rel.Before(l.originalRel) {
+		l.rel = l.rel.AddDate(1, 0, 0)
+	}
 	return l.rel, nil
 }
 
-func parse(input string, rel time.Time) (time.Time, error) {
+type ParseResult struct {
+	Time     time.Time
+	NextUsed bool
+}
+
+func parseX(input string, rel time.Time) (ParseResult, error) {
 	yyDebug = 0
 	yyErrorVerbose = true
 
-	lexer := &dateLexer{Lexer: &util.Lexer{Input: input}, rel: rel}
+	lexer := &dateLexer{Lexer: &util.Lexer{Input: input}, rel: rel, originalRel: rel}
 	if ret := yyParse(lexer); ret != 0 {
-		return time.Time{}, errors.New(strings.Join(lexer.errors, "; "))
+		return ParseResult{}, errors.New(strings.Join(lexer.errors, "; "))
 	}
 	if lexer.states == 0 {
-		return time.Time{}, errors.New("no dates parsed from input")
+		return ParseResult{}, errors.New("no dates parsed from input")
 	}
-	return lexer.resolve()
+	t, err := lexer.resolve()
+	return ParseResult{t, lexer.nextUsed}, err
 }
 
 func Parse(input string) (time.Time, error) {
-	return parse(input, time.Now().In(local))
+	res, err := parseX(input, time.Now().In(local))
+	return res.Time, err
 }
 
 func ParseZ(input string, zone *time.Location) (time.Time, error) {
-	return parse(input, time.Now().In(zone))
+	res, err := parseX(input, time.Now().In(zone))
+	return res.Time, err
+}
+
+func ParseX(input string) (ParseResult, error) {
+	return parseX(input, time.Now().In(local))
+}
+
+func ParseXZ(input string, zone *time.Location) (ParseResult, error) {
+	return parseX(input, time.Now().In(zone))
 }
