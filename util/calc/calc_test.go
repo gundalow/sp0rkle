@@ -128,7 +128,7 @@ func TestToken(t *testing.T) {
 		{"&", T_NFI, "&", 0},
 	}
 	// Test all the fucntions are correctly recognised
-	for fun, _ := range functionMap {
+	for fun := range functionMap {
 		tests = append(tests, tt{fun, T_FUNC, fun, 0})
 	}
 	// Test all the constants are correctly recognised
