@@ -88,8 +88,8 @@ func New(b *bot.Bot, rc *reminders.Collection, pc *pushes.Collection, config *co
 			tracking: make(map[string]*flightInfo),
 			aliases: make(map[string]string),
 		}
-		b.Command(d.stalk, "stalk", "stalk <flight>  -- trackers a flight via AeroDataBox")
-		b.Command(d.stalk, "flight tracking start", "flight tracking start <flight>  -- trackers a flight via AeroDataBox")
+		b.Command(d.stalk, "stalk", "stalk <flight>  -- tracks a flight via AeroDataBox")
+		b.Command(d.stalk, "flight tracking start", "flight tracking start <flight>  -- tracks a flight via AeroDataBox")
 		b.Command(d.unstalk, "unstalk", "unstalk <flight>  -- stops tracking a flight")
 		b.Command(d.unstalk, "flight tracking stop", "flight tracking stop <flight>  -- stops tracking a flight")
 		b.Command(d.status, "flight status", "flight status <flight> -- returns the cached status of the flight if it is being stalked")
