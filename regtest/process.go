@@ -133,7 +133,8 @@ func (p *Process) Stop() error {
 		return nil
 	}
 	// an error from us killing the process is fine.
-	if ee, ok := errors.AsType[*exec.ExitError](waitErr); ok {
+	var ee *exec.ExitError
+	if errors.As(waitErr, &ee) {
 		if ws, ok := ee.Sys().(syscall.WaitStatus); ok {
 			sig := ws.Signal()
 			if sig == syscall.SIGINT || sig == syscall.SIGKILL {
