@@ -100,3 +100,12 @@ func testUrlScanUrlInMiddleOfText(t *testing.T) {
 		t.Errorf("expected to find middle of sentence URL, got: %v", err)
 	}
 }
+
+func testUrlScanImgurValidationFailure(t *testing.T) {
+	w := h.Expect(h.Contains("unsupported format"))
+	h.Privmsg(h.Channel, "check this out: https://imgur.com/a/AwesomeAlbum")
+	_, err := w.Wait()
+	if err != nil {
+		t.Errorf("expected unsupported format reply, got: %v", err)
+	}
+}

@@ -86,7 +86,7 @@ func (data *Data) status(details bool) string {
 	if details && (data.Departure.Terminal != "" || data.Departure.Gate != "") {
 		b.WriteString(", departing")
 		if data.Departure.Terminal != "" {
-			fmt.Fprintf(b, " T", data.Departure.Terminal)
+			fmt.Fprintf(b, " T%s", data.Departure.Terminal)
 		}
 		if data.Departure.Gate != "" {
 			fmt.Fprintf(b, " gate %s", data.Departure.Gate)
