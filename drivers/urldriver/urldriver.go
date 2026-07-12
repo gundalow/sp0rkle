@@ -126,8 +126,18 @@ func (d *Driver) Cache(u *urls.Url) error {
 			return fmt.Errorf("url contains bad substring %q", s)
 		}
 	}
+
+	fetchURL := u.Url
+	if IsImgurURL(u.Url) {
+		proxyURL, err := ProxyImgurURL(u.Url)
+		if err != nil {
+			return err
+		}
+		fetchURL = proxyURL
+	}
+
 	// Try a HEAD req first to get Content-Length header.
-	res, err := http.Head(u.Url)
+	res, err := http.Head(fetchURL)
 	if err != nil {
 		return err
 	}
@@ -141,7 +151,7 @@ func (d *Driver) Cache(u *urls.Url) error {
 			return fmt.Errorf("response too large (%d MB) to cache safely", bytes/1024/1024)
 		}
 	}
-	res, err = http.Get(u.Url)
+	res, err = http.Get(fetchURL)
 	if err != nil {
 		return err
 	}

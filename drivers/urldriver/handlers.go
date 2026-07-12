@@ -23,6 +23,24 @@ func (d *Driver) urlScan(ctx *bot.Context) {
 				continue
 			}
 			u := urls.NewUrl(w, n, c)
+			if IsImgurURL(w) && ctx.Public() {
+				u.Shortened = d.Encode(w)
+				// d.Cache(u) downloads the image via proxy, generates CachedAs, and persists the
+				// u object (with both Shortened and CachedAs) to the database via d.uc.Put(u).
+				if err := d.Cache(u); err != nil {
+					ctx.ReplyN("Failed to store cached url: %s", err)
+					continue
+				}
+				if u.Shortened != "" {
+					ctx.Reply("%s's URL shortened as %s%s%s",
+						ctx.Nick, bot.HttpHost(), shortenPath, u.Shortened)
+				}
+				ctx.Reply("%s's URL cached as %s%s%s",
+					ctx.Nick, bot.HttpHost(), cachePath, u.CachedAs)
+				d.lastseen[ctx.Target()] = u.Id_
+				continue
+			}
+
 			if len(w) > autoShortenLimit && ctx.Public() {
 				u.Shortened = d.Encode(w)
 			}

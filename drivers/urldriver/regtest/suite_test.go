@@ -45,4 +45,5 @@ func TestHandlers(t *testing.T) {
 	t.Run("scan_supported_schemes", testUrlScanSupportedSchemes)
 	t.Run("scan_unsupported_schemes", testUrlScanUnsupportedSchemes)
 	t.Run("scan_url_in_middle", testUrlScanUrlInMiddleOfText)
+	t.Run("scan_imgur_validation_failure", testUrlScanImgurValidationFailure)
 }
