@@ -23,7 +23,7 @@ func (d *Driver) urlScan(ctx *bot.Context) {
 				continue
 			}
 			u := urls.NewUrl(w, n, c)
-			if IsImgurURL(w) {
+			if IsImgurURL(w) && ctx.Public() {
 				u.Shortened = d.Encode(w)
 				// d.Cache(u) downloads the image via proxy, generates CachedAs, and persists the
 				// u object (with both Shortened and CachedAs) to the database via d.uc.Put(u).

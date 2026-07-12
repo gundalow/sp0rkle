@@ -77,6 +77,10 @@ func TestProxyImgurURL(t *testing.T) {
 			url:         "https://imgur.com/user/username",
 			expectError: true,
 		},
+		{
+			url:         "https://notimgur.com/image.png",
+			expectError: true,
+		},
 	}
 
 	for _, tc := range tests {
