@@ -299,7 +299,7 @@ db_store_indexed_scan_next:
     jz .idxscan_error
     mov rcx, [rax]
     cmp rcx, 16
-    jne .idxscan_error
+    jne .idxscan_loop
     mov r10, [r14 + 48]         ; ObjectId pointer bytes from index value
     test r10, r10
     jz .idxscan_error
