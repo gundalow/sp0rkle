@@ -194,7 +194,7 @@ bot_command_dispatch:
     push r13
     push r14
     push r15
-    sub rsp, 8
+    sub rsp, 24
 
     mov r12, rdi                ; entries
     mov r13d, esi               ; count
@@ -239,16 +239,6 @@ bot_command_dispatch:
     mov r8, [rbp - 56]
     mov [r8], rdx
 
-    mov rdx, [rbp - 48]
-    mov rdi, r14
-    mov rsi, r15
-    ; Matched prefix length is recomputed from the selected entry.
-    mov rcx, [rax + 8]
-    add rdi, rcx
-    sub rsi, rcx
-    mov rsi, rsi
-    mov rdx, [rbp + 16]
-    mov rcx, [rbp - 48]
     ; Preserve selected entry's prefix length before the call in r9.
     mov r9, [rax + 8]
     mov rdi, r14
@@ -274,7 +264,7 @@ bot_command_dispatch:
 .invalid:
     mov eax, -1
 .done:
-    add rsp, 8
+    add rsp, 24
     pop r15
     pop r14
     pop r13
