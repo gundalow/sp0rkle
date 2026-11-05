@@ -20,6 +20,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Explicit ABI and string ownership conventions in the repository README.
 - ASCII-case-insensitive addressed-message prefix stripping for bot context creation.
 - Command argument normalization that trims and compresses ASCII whitespace.
+- Command-dispatch orchestration for addressed gating, caller-evaluated factoid bypass, longest-prefix handler selection and normalized arguments.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 
 ## Not implemented yet
