@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 struct irc_message {
     uint32_t tags_offset, tags_length;
@@ -20,6 +22,7 @@ struct event_handler {
     void *context;
 };
 
+extern int64_t irc_session_dispatch_next(int, char *, size_t, struct irc_message *, const struct event_handler *, uint64_t);
 extern int64_t irc_event_dispatch(const struct event_handler *, uint64_t,
                                   const char *, uint64_t,
                                   const struct irc_message *);
@@ -58,6 +61,18 @@ int main(void) {
     message.command_offset = 99;
     assert(irc_event_dispatch(handlers, 4, line, sizeof(line) - 1,
                               &message) == -1);
+    int sockets[2];
+    assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
+    const char frame[] = ":nick PRIVMSG #chan :hello\\r\\n";
+    assert(write(sockets[1], frame, sizeof(frame) - 1) == (ssize_t)(sizeof(frame) - 1));
+    char input[512];
+    memset(&message, 0, sizeof(message));
+    assert(irc_session_dispatch_next(sockets[0], input, sizeof(input),
+                                     &message, handlers, 4) == 2);
+    assert(a.calls == 11);
+    assert(b.calls == 22);
+    close(sockets[0]);
+    close(sockets[1]);
     puts("event dispatch tests: PASS");
     return 0;
 }
