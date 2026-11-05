@@ -104,8 +104,10 @@ bot_poller_set_connection:
     test rax, rax
     jz .start_next
     push rdi
+    sub rsp, 8
     mov rdi, [rdi + 24]
     call rax
+    add rsp, 8
     pop rdi
 .start_next:
     inc rbx
