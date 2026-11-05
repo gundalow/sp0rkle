@@ -18,7 +18,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - C socketpair regression tests for NICK/USER/JOIN wire output, welcome/nickname collision handling, PING/PONG and delivery of the next IRC event.
 - Minimal logging entry points and a shell smoke-test target.
 - Explicit ABI and string ownership conventions in the repository README.
-- ASCII-case-insensitive addressed-message prefix stripping for bot context creation.
+- ASCII-case-insensitive addressed-message prefix stripping and complete PRIVMSG text/addressed-state preparation.
 - Command argument normalization that trims and compresses ASCII whitespace.
 - Command-dispatch orchestration for addressed gating, factoid bypass, longest-prefix handler selection and normalized arguments.
 - Reference-compatible factoid-addition detection for `:is` and `:=` markers.
