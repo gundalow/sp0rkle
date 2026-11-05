@@ -2,12 +2,14 @@
 default rel
 global db_store_keyed_delete
 global db_store_keyed_scan_open
+global db_store_indexed_get
 
 extern db_key_path_append
 extern db_store_delete
 extern db_store_bucket_exists
 extern db_store_bucket_delete
 extern db_store_scan_tree_open
+extern db_store_get
 
 section .text
 ; int db_store_keyed_delete(handle,parent_path,parent_len,key,key_len,
@@ -146,4 +148,107 @@ db_store_keyed_scan_open:
     pop r12
     pop rbx
     pop rbp
+    ret
+
+; Indexed get request (104 bytes):
+; +0 values path ptr, +8 values path_len,
+; +16 indexes path ptr, +24 indexes path_len,
+; +32 index path ptr, +40 index path_len,
+; +48 index key ptr, +56 index key_len,
+; +64 pointer scratch, +72 pointer capacity,
+; +80 BSON output, +88 output capacity, +96 output length pointer.
+; int db_store_indexed_get(handle, request)
+; Resolves an index key to its _id pointer when needed, then fetches the
+; canonical BSON value from the values path. Returns 1 found, 0 absent, -1 error.
+db_store_indexed_get:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 32
+    mov r12, rdi
+    mov r13, rsi
+    test r12, r12
+    jz .idxget_error
+    test r13, r13
+    jz .idxget_error
+    mov r14, [r13 + 48]
+    mov r15, [r13 + 56]
+    test r14, r14
+    jz .idxget_error
+    ; A direct _id key bypasses index traversal only at the index root.
+    cmp qword [r13 + 40], 0
+    jne .idxget_resolve
+    cmp r15, 4
+    jb .idxget_resolve
+    cmp byte [r14], '_'
+    jne .idxget_resolve
+    cmp byte [r14 + 1], 'i'
+    jne .idxget_resolve
+    cmp byte [r14 + 2], 'd'
+    jne .idxget_resolve
+    cmp byte [r14 + 3], 0x1f
+    jne .idxget_resolve
+    mov rbx, r14
+    mov r15, [r13 + 56]
+    jmp .idxget_value
+
+.idxget_resolve:
+    ; Fetch the pointer stored at indexes_path/index_path/index_key.
+    cmp qword [r13 + 16], 0
+    je .idxget_error
+    cmp qword [r13 + 32], 0
+    je .idxget_error
+    cmp qword [r13 + 64], 0
+    je .idxget_error
+    mov qword [rsp + 16], 0
+    mov rdi, r12
+    mov rsi, [r13 + 16]
+    mov rdx, [r13 + 24]
+    mov rcx, [r13 + 32]
+    mov r8, [r13 + 40]
+    mov r9, r14
+    mov rax, [r13 + 72]
+    mov [rsp], rax
+    lea rax, [rsp + 16]
+    mov [rsp + 8], rax
+    call db_store_get
+    cmp eax, 1
+    je .idxget_pointer_found
+    test eax, eax
+    jz .idxget_missing
+    jmp .idxget_error
+.idxget_pointer_found:
+    mov rbx, r14
+    mov r15, [rsp + 16]
+    test r15, r15
+    jz .idxget_error
+
+.idxget_value:
+    ; Fetch canonical record using the resolved _id pointer.
+    mov rdi, r12
+    mov rsi, [r13]
+    mov rdx, [r13 + 8]
+    mov rcx, rbx
+    mov r8, r15
+    mov r9, [r13 + 80]
+    mov rax, [r13 + 88]
+    mov [rsp], rax
+    mov rax, [r13 + 96]
+    mov [rsp + 8], rax
+    call db_store_get
+    jmp .idxget_done
+.idxget_missing:
+    xor eax, eax
+    jmp .idxget_done
+.idxget_error:
+    mov eax, -1
+.idxget_done:
+    add rsp, 32
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
