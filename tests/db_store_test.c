@@ -35,6 +35,7 @@ struct indexed_request { const void *value_path; size_t value_path_len; const vo
 extern int db_store_indexed_update(void *, const struct indexed_request *);
 struct indexed_delete_request { const void *value_path; size_t value_path_len; const void *value_key; size_t value_key_len; const struct batch_entry *old_indexes; size_t old_count; };
 extern int db_store_indexed_delete(void *, const struct indexed_delete_request *);
+extern int db_store_indexed_prune_stale(void *, const void *, size_t, const void *, size_t);
 struct indexed_get_request { const void *values_path; size_t values_path_len; const void *indexes_path; size_t indexes_path_len; const void *index_path; size_t index_path_len; const void *index_key; size_t index_key_len; void *pointer_scratch; size_t pointer_capacity; void *value_out; size_t value_capacity; size_t *value_len; };
 extern int db_store_indexed_get(void *, const struct indexed_get_request *);
 struct indexed_scan_request { void *statement; struct scan_tree_entry *scan_entry; const void *values_path; size_t values_path_len; void *value_out; size_t value_capacity; size_t *value_len; unsigned char *seen_ids; size_t *seen_count; size_t seen_capacity; };
@@ -144,10 +145,13 @@ int main(void) {
     const unsigned char alias_index[]={'n','a','m','e',0x1f,'A','l','i','a','s'};
     const unsigned char stale_index[]={'n','a','m','e',0x1f,'S','t','a','l','e'};
     const unsigned char stale_pointer[]={'_','i','d',0x1f,99,98,97,96,95,94,93,92,91,90,89,88};
+    const unsigned char malformed_index[]={'n','a','m','e',0x1f,'M','a','l','f','o','r','m','e','d'};
     struct batch_entry alias_entry={idxs_path,sizeof(idxs_path)-1,alias_index,sizeof(alias_index),pointer_value,sizeof(pointer_value)};
     struct batch_entry stale_entry={idxs_path,sizeof(idxs_path)-1,stale_index,sizeof(stale_index),stale_pointer,sizeof(stale_pointer)};
+    struct batch_entry malformed_entry={idxs_path,sizeof(idxs_path)-1,malformed_index,sizeof(malformed_index),"oops",4};
     assert(db_store_put(db,idxs_path,sizeof(idxs_path)-1,alias_index,sizeof(alias_index),pointer_value,sizeof(pointer_value))==0);
     assert(db_store_put(db,idxs_path,sizeof(idxs_path)-1,stale_index,sizeof(stale_index),stale_pointer,sizeof(stale_pointer))==0);
+    assert(db_store_put(db,idxs_path,sizeof(idxs_path)-1,malformed_index,sizeof(malformed_index),"oops",4)==0);
     void *index_cursor=NULL;
     assert(db_store_scan_tree_open(db,idxs_path,sizeof(idxs_path)-1,&index_cursor)==0);
     unsigned char scan_index_path[32],scan_index_key[32],scan_pointer[32],seen_ids[64];
@@ -158,8 +162,11 @@ int main(void) {
     assert(indexed_scan_len==10 && memcmp(indexed_value,"record-two",10)==0 && seen_count==1);
     assert(db_store_indexed_scan_next(db,&scan_request)==0);
     assert(db_store_scan_close(index_cursor)==0);
-    struct batch_entry delete_indexes[]={next_index,alias_entry,stale_entry};
-    struct indexed_delete_request indexed_delete={vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),delete_indexes,3};
+    assert(db_store_indexed_prune_stale(db,idxs_path,sizeof(idxs_path)-1,vals_path,sizeof(vals_path)-1)==2);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,stale_index,sizeof(stale_index),out,sizeof(out),&out_len)==0);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,malformed_index,sizeof(malformed_index),out,sizeof(out),&out_len)==0);
+    struct batch_entry delete_indexes[]={next_index,alias_entry};
+    struct indexed_delete_request indexed_delete={vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),delete_indexes,2};
     assert(db_store_indexed_delete(db,&indexed_delete)==0);
     assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==0);
     assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==0);
