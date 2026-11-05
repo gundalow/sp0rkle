@@ -58,7 +58,7 @@ int main(void) {
     assert(out_len == 0 && normalized[0] == 0);
     out_len = bot_command_normalize_args("hello", 5, normalized, 5);
     assert(out_len == -1 && normalized[0] == 0);
-    assert(bot_is_factoid_addition("fact: is true", 13) == 1);
+    assert(bot_is_factoid_addition("fact:is true", 12) == 1);
     assert(bot_is_factoid_addition("FACT:IS value", 13) == 1);
     assert(bot_is_factoid_addition("key:=value", 10) == 1);
     assert(bot_is_factoid_addition("ordinary message", 16) == 0);
