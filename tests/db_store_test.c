@@ -11,6 +11,8 @@ extern int db_store_begin(void *);
 extern int db_store_commit(void *);
 extern int db_store_rollback(void *);
 extern int db_store_put(void *, const void *, size_t, const void *, size_t, const void *, size_t);
+struct batch_entry { const void *path; size_t path_len; const void *key; size_t key_len; const void *value; size_t value_len; };
+extern int db_store_put_batch(void *, const struct batch_entry *, size_t);
 extern int db_store_get(void *, const void *, size_t, const void *, size_t, void *, size_t, size_t *);
 extern int db_store_delete(void *, const void *, size_t, const void *, size_t);
 extern int db_store_sequence_next(void *, const void *, size_t, int64_t *);
@@ -82,6 +84,27 @@ int main(void) {
     assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 2);
     assert(db_store_sequence_set(db, path, sizeof(path), 41) == 0);
     assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 42);
+
+    struct batch_entry batch[] = {
+        {path,sizeof(path),"batch-a",7,"A",1},
+        {path,sizeof(path),"batch-b",7,"B",1}
+    };
+    struct batch_entry invalid_batch[] = {
+        {path,sizeof(path),"batch-a",7,"A",1},
+        {path,sizeof(path),"batch-b",7,"B",1},
+        {NULL,0,"bad",3,"X",1}
+    };
+    assert(db_store_put_batch(db, invalid_batch, 3) == -1);
+    assert(db_store_get(db, path, sizeof(path), "batch-a", 7, out, sizeof(out), &out_len) == 0);
+    assert(db_store_begin(db) == 0);
+    assert(db_store_put_batch(db, batch, 2) == 0);
+    assert(db_store_get(db, path, sizeof(path), "batch-a", 7, out, sizeof(out), &out_len) == 1);
+    assert(out_len == 1 && out[0] == 'A');
+    assert(db_store_rollback(db) == 0);
+    assert(db_store_get(db, path, sizeof(path), "batch-a", 7, out, sizeof(out), &out_len) == 0);
+    assert(db_store_put_batch(db, batch, 2) == 0);
+    assert(db_store_get(db, path, sizeof(path), "batch-b", 7, out, sizeof(out), &out_len) == 1);
+    assert(out_len == 1 && out[0] == 'B');
 
     assert(db_store_begin(db) == 0);
     const unsigned char transient[] = "rollback";
