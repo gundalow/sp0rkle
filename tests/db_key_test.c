@@ -6,6 +6,8 @@ extern int db_key_validate_name(const char *, size_t);
 extern long db_key_encode_string(const char *, size_t, const char *, size_t, unsigned char *, size_t);
 extern long db_key_encode_u64(const char *, size_t, uint64_t, unsigned char *, size_t);
 extern long db_key_encode_bool(const char *, size_t, int, unsigned char *, size_t);
+extern long db_key_encode_id(const unsigned char *, unsigned char *, size_t);
+extern long db_key_encode_timestamp_ms(const char *, size_t, int64_t, unsigned char *, size_t);
 int main(void) {
     unsigned char out[64] = {0};
     assert(db_key_validate_name("valid", 5) == 0);
@@ -19,6 +21,14 @@ int main(void) {
     assert(memcmp(out, "flag\x1f\xff", 6) == 0);
     assert(db_key_encode_bool("flag", 4, 0, out, sizeof(out)) == 6);
     assert(memcmp(out, "flag\x1f\x00", 6) == 0);
+    const unsigned char object_id[12] = {0,1,2,3,4,5,6,7,8,9,10,11};
+    assert(db_key_encode_id(object_id, out, sizeof(out)) == 16);
+    const unsigned char id_expected[] = {'_', 'i', 'd', 0x1f, 0,1,2,3,4,5,6,7,8,9,10,11};
+    assert(memcmp(out, id_expected, sizeof(id_expected)) == 0);
+    assert(db_key_encode_id(object_id, out, 15) == -1);
+    assert(db_key_encode_timestamp_ms("when", 4, INT64_C(-1), out, sizeof(out)) == 13);
+    const unsigned char ts_expected[] = {'w','h','e','n',0x1f,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
+    assert(memcmp(out, ts_expected, sizeof(ts_expected)) == 0);
     memset(out, 0x55, sizeof(out));
     assert(db_key_encode_string("name", 4, "value", 5, out, 9) == -1);
     assert(out[0] == 0x55);
