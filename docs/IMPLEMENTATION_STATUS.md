@@ -40,7 +40,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 
 ### Database key primitives
 
-- Added byte-exact encoders for string, uint64, boolean, 12-byte ObjectId, and signed Unix-millisecond timestamp key elements using the reference unit separator.
+- Added byte-exact encoders for string, uint64, boolean, 12-byte ObjectId, and signed Unix-millisecond timestamp key elements using the reference unit separator, plus a length-delimited hierarchical bucket-path encoder.
 - uint64 values are encoded as fixed-width eight-byte big-endian values; boolean values use 0xff and 0x00.
 - Added key-name validation rejecting the unit separator and capacity checks that leave output untouched on failure.
 - Added C regression tests for exact bytes, binary values, invalid names, and insufficient output capacity.
