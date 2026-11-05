@@ -33,6 +33,8 @@ extern int db_store_keyed_delete(void *, const void *, size_t, const void *, siz
 extern int db_store_keyed_scan_open(void *, const void *, size_t, const void *, size_t, void **, void *, size_t);
 struct indexed_request { const void *value_path; size_t value_path_len; const void *value_key; size_t value_key_len; const void *value; size_t value_len; const struct batch_entry *old_indexes; size_t old_count; const struct batch_entry *new_indexes; size_t new_count; };
 extern int db_store_indexed_update(void *, const struct indexed_request *);
+struct indexed_delete_request { const void *value_path; size_t value_path_len; const void *value_key; size_t value_key_len; const struct batch_entry *old_indexes; size_t old_count; };
+extern int db_store_indexed_delete(void *, const struct indexed_delete_request *);
 struct indexed_get_request { const void *values_path; size_t values_path_len; const void *indexes_path; size_t indexes_path_len; const void *index_path; size_t index_path_len; const void *index_key; size_t index_key_len; void *pointer_scratch; size_t pointer_capacity; void *value_out; size_t value_capacity; size_t *value_len; };
 extern int db_store_indexed_get(void *, const struct indexed_get_request *);
 
@@ -137,6 +139,10 @@ int main(void) {
     assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==1);
     assert(out_len==10 && memcmp(out,"record-two",10)==0);
     assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==1);
+    struct indexed_delete_request indexed_delete={vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),&next_index,1};
+    assert(db_store_indexed_delete(db,&indexed_delete)==0);
+    assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==0);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==0);
 
     assert(db_store_put(db, path, sizeof(path), key, sizeof(key), value, sizeof(value)) == 0);
     assert(db_store_get(db, path, sizeof(path), key, sizeof(key), out, sizeof(out), &out_len) == 1);
