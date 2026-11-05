@@ -128,6 +128,7 @@ int main(void) {
     assert(bson_decode_scalar(found.type,found.value,found.value_len,nested_copy,sizeof(nested_copy),&decoded_len)==0);
     assert(decoded_len==5 && u32(nested_copy)==5);
     decoded_len=99;
+    assert(bson_find_field(generic,generic_len,"name",4,&found)==1);
     assert(bson_decode_scalar(0x02,found.value,found.value_len,decoded_name,1,&decoded_len)==-1);
     assert(decoded_len==99);
     unsigned char generic_untouched[32]; memset(generic_untouched,0x33,sizeof(generic_untouched));
