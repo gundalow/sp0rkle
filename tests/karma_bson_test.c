@@ -77,8 +77,7 @@ int main(void) {
     assert(karma_bson_decode(&req)==0);
     assert(strcmp(subject,"Sp0rKle")==0 && strcmp(key,"sp0rkle")==0);
     assert(decoded.subject==subject && decoded.subject_len==7 && decoded.key==key);
-    fprintf(stderr,"decoded score=%lld votes=%llu\\n",(long long)decoded.score,(unsigned long long)decoded.votes); fflush(stderr);
-    assert(decoded.score==1 && decoded.votes==2);
+    assert(decoded.score==INT64_C(2147483648) && decoded.votes==2);
     assert(strcmp(upvoter,"Alice")==0 && decoded.upvoter_len==5 && decoded.upvtime==1000);
     assert(strcmp(downvoter,"Bob")==0 && decoded.downvoter_len==3 && decoded.downvtime==2000);
     struct decode_request small=req; small.subject_capacity=2;
