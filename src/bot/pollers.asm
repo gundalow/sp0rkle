@@ -7,7 +7,7 @@ global bot_poller_set_poll_all
 
 ; Poller entry: 40 bytes
 ; +0 start(ctx), +8 stop(ctx), +16 poll(ctx, contexts, count)
-; +24 opaque ctx, +32 active uint32, +36 reserved.
+; +24 opaque ctx, +32 active uint32, +36 registered uint32.
 ; State: 24 bytes: +0 connection_count, +8 entries, +16 entry_count.
 ; All storage is caller-owned. No internal threads/timers are created.
 ; The application scheduler calls bot_poller_set_poll_all at each due tick.
@@ -29,6 +29,7 @@ bot_poller_set_init:
     mov rax, rcx
     imul rax, 40
     mov dword [rsi + rax + 32], 0
+    mov dword [rsi + rax + 36], 0
     inc rcx
     jmp .init_clear
 .init_done:
@@ -47,6 +48,7 @@ bot_poller_set_add:
     jz .add_error
     imul rax, rsi, 40
     lea rdx, [rdx + rax]
+    mov dword [rdx + 36], 1
     cmp dword [rdx + 32], 0
     jne .add_ok
     cmp qword [rdi], 0
@@ -97,6 +99,8 @@ bot_poller_set_connection:
     jz .conn_success
     imul rdx, rbx, 40
     lea rdi, [rax + rdx]
+    cmp dword [rdi + 36], 0
+    je .start_next
     cmp dword [rdi + 32], 0
     jne .start_next
     mov dword [rdi + 32], 1
