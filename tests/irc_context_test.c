@@ -54,6 +54,22 @@ int main(void) {
            memcmp(ctx.reply_target, "#room", 5) == 0);
     assert(ctx.addressed == 1);
 
+    const char private_line[] = ":Alice!u@host PRIVMSG Bot :hello";
+    struct irc_message pm = {0};
+    struct bot_privmsg_context private_ctx = {0};
+    pm.prefix_offset = 1; pm.prefix_length = 12;
+    pm.command_offset = 14; pm.command_length = 7;
+    pm.param_count = 2;
+    pm.params[0].offset = 22; pm.params[0].length = 3;
+    pm.params[1].offset = 27; pm.params[1].length = 5;
+    assert(bot_irc_privmsg_context(private_line, strlen(private_line), &pm,
+                                   "Bot", 3, &private_ctx) == 1);
+    assert(private_ctx.body_len == 5 &&
+           memcmp(private_ctx.body, "hello", 5) == 0);
+    assert(private_ctx.addressed == 1);
+    assert(private_ctx.reply_target_len == 5 &&
+           memcmp(private_ctx.reply_target, "Alice", 5) == 0);
+
     m.command_length = 4;
     assert(bot_irc_privmsg_views(line, strlen(line), &m, &v) == 0);
     m.command_length = 7;
