@@ -35,10 +35,12 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 - db_store_scan_tree_next(statement, descriptor): copies the next row's path, key and value into caller buffers. The 72-byte descriptor contains pointer/capacity/length-output triples for path, key and value at offsets 0/8/16, 24/32/40 and 48/56/64. Returns 1 for a row, 0 at end, or -1 on error/capacity failure.
 - db_store_scan_close(statement): finalizes either exact-bucket or subtree cursors.
 
+- db_store_backup(source_handle, destination_path): writes a consistent point-in-time SQLite snapshot using the online backup API. The destination is opened/created and closed by the function; periodic scheduling, compression, rotation and secure directory policy belong to the application layer.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
 
 ## Compatibility work still required
 
-The current layer supports ordered scans of one exact bucket, but does not yet implement keyed/indexed collection policies, BSON marshal/unmarshal, index pointer maintenance, fsck, or scheduled compressed backups. It also does not read existing BoltDB files. These remain explicit feature-parity tasks.
+The current layer supports ordered scans of one exact bucket, but does not yet implement keyed/indexed collection policies, BSON marshal/unmarshal, index pointer maintenance, fsck, or scheduled compressed backup rotation. It also does not read existing BoltDB files. These remain explicit feature-parity tasks.
