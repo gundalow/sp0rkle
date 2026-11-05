@@ -12,7 +12,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - IRC line terminator length primitive (CR, LF, or NUL).
 - Explicit-length IRC message parser for tags, prefixes, commands, middle parameters and trailing parameters, with a 15-parameter limit.
 - Ordered IRC event dispatch by case-insensitive command, invoking every matching registered callback with the original line and parsed message.
-- C regression coverage for multiple handlers, case-insensitive matching, null callbacks, no-match dispatch and invalid parsed-message bounds.
+- Session-to-dispatch bridge that receives the next non-PING event, parses it, and immediately invokes the registered command handlers.
+- C regression coverage for multiple handlers, case-insensitive matching, null callbacks, no-match dispatch, invalid parsed-message bounds, and socketpair-driven receive/parse/dispatch integration.
 - POSIX TCP transport primitives for address resolution/connect, complete-buffer send and bounded CRLF line receive.
 - Initial IRC NICK/USER registration command sender.
 - Blocking session reader that parses incoming frames and automatically answers PING with PONG.
@@ -76,4 +77,4 @@ commands.
 - Added `irc_event_dispatch` to route a parsed message to all registered handlers for its command, preserving registration order and using ASCII-case-insensitive matching.
 - Handler entries are 32 bytes: command pointer, command length, callback pointer, and opaque callback context.
 - Callback ABI is `void callback(ctx, original_line, line_len, parsed_message)`. A null callback is skipped; the return value is the number invoked, or `-1` for invalid top-level arguments or command bounds.
-- This is a deterministic dispatch primitive, not yet the network event loop or multi-server lifecycle.
+- Added `irc_session_dispatch_next` to compose the existing blocking session reader with parsing and ordered dispatch. It handles one non-PING event per call and returns the number of callbacks invoked (zero for an unhandled event), zero for clean EOF, or -1 for transport/parse errors. A socketpair test covers this integrated path. This remains a single-connection blocking primitive: it does not yet construct the full bot Context, dispatch PRIVMSG commands, reconnect, or manage multiple servers.
