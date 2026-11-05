@@ -286,7 +286,9 @@ karma_bson_encode:
     rep movsb
     mov byte [rdi], 0
     mov [r15 + %1], r9
+%if %2 >= 0
     mov [r15 + %2], r10
+%endif
     mov eax, [rbx]
     add rbx, 4
     add rbx, rax
@@ -327,7 +329,7 @@ karma_bson_decode:
     COPY_STRING 0, 8, 24
 
     EXPECT_FIELD "key", 0x02
-    COPY_STRING 16, 0, 40
+    COPY_STRING 16, -1, 40
 
     EXPECT_INT_FIELD "score"
     cmp r8b, 0x10
