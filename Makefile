@@ -17,7 +17,7 @@ $(BUILD_DIR)/%.o: src/%.asm
 
 test: $(TARGET)
 	./$(TARGET) --self-test
-	./tests/smoke.sh ./$(TARGET)
+	sh ./tests/smoke.sh ./$(TARGET)
 
 clean:
 	rm -rf $(BUILD_DIR)
