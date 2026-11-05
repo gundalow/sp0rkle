@@ -45,7 +45,7 @@ $(CONTEXT_EMIT_TEST): tests/context_emit_test.c $(BUILD_DIR)/bot/context_emit.o 
 $(REWRITE_TEST): tests/rewrite_test.c $(BUILD_DIR)/bot/rewrite.o
 	$(CC) -no-pie -o $@ $^
 
-$(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o
+$(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o
 	$(CC) -no-pie -o $@ $^
 
 test: $(TARGET) $(IRC_CONTEXT_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
