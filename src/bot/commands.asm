@@ -3,6 +3,7 @@ default rel
 global bot_command_match
 global bot_command_normalize_args
 global bot_command_dispatch
+global bot_is_factoid_addition
 
 ; struct bot_command_entry (32 bytes):
 ;   +0  const char *prefix
@@ -271,4 +272,54 @@ bot_command_dispatch:
     pop r12
     pop rbx
     pop rbp
+    ret
+
+
+; int bot_is_factoid_addition(text, text_len)
+; Mirrors util.IsFactoidAddition: case-insensitive substring search for
+; either ":is" or ":=". Operates on explicit-length bytes.
+bot_is_factoid_addition:
+    xor r8d, r8d
+    xor r9d, r9d
+.scan_fact:
+    lea rax, [r8 + 3]
+    cmp rax, rsi
+    ja .check_equal
+    movzx eax, byte [rdi + r8]
+    cmp al, ':'
+    jne .check_equal
+    movzx eax, byte [rdi + r8 + 1]
+    cmp al, 'I'
+    jb .check_is_lower
+    cmp al, 'S'
+    ja .check_is_lower
+    add al, 32
+.check_is_lower:
+    cmp al, 'i'
+    jne .check_equal
+    movzx eax, byte [rdi + r8 + 2]
+    cmp al, 'S'
+    jb .check_s_lower
+    cmp al, 'S'
+    ja .check_s_lower
+    add al, 32
+.check_s_lower:
+    cmp al, 's'
+    je .fact_yes
+.check_equal:
+    lea rax, [r8 + 2]
+    cmp rax, rsi
+    ja .advance
+    cmp byte [rdi + r8], ':'
+    jne .advance
+    cmp byte [rdi + r8 + 1], '='
+    je .fact_yes
+.advance:
+    inc r8
+    cmp r8, rsi
+    jb .scan_fact
+    xor eax, eax
+    ret
+.fact_yes:
+    mov eax, 1
     ret
