@@ -13,6 +13,9 @@ global db_store_sequence_set
 global db_store_bucket_ensure
 global db_store_bucket_exists
 global db_store_bucket_delete
+global db_store_scan_open
+global db_store_scan_next
+global db_store_scan_close
 
 extern sqlite3_open_v2
 extern sqlite3_close
@@ -54,6 +57,7 @@ bucket_exists_sql: db "SELECT 1 FROM buckets WHERE path=?1", 0
 bucket_delete_kv_sql: db "DELETE FROM kv WHERE substr(path,1,?1)=?2", 0
 bucket_delete_seq_sql: db "DELETE FROM sequences WHERE substr(path,1,?1)=?2", 0
 bucket_delete_bucket_sql: db "DELETE FROM buckets WHERE substr(path,1,?1)=?2", 0
+scan_sql: db "SELECT key,value FROM kv WHERE path=?1 ORDER BY key", 0
 savepoint_sql: db "SAVEPOINT bucket_delete", 0
 rollback_savepoint_sql: db "ROLLBACK TO bucket_delete", 0
 release_sql: db "RELEASE bucket_delete", 0
@@ -787,4 +791,162 @@ db_store_bucket_delete:
     pop r13
     pop r12
     pop rbx
+    ret
+
+; int db_store_scan_open(handle,path,path_len,statement_out)
+; Opens a stable SQLite read cursor over one bucket, ordered by binary key.
+db_store_scan_open:
+    push rbx
+    push r12
+    push r13
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov rbx, rdx
+    mov qword [rsp], 0
+    test r12, r12
+    jz .scan_open_error
+    test r13, r13
+    jz .scan_open_error
+    test rcx, rcx
+    jz .scan_open_error
+    mov rdi, r12
+    lea rsi, [rel scan_sql]
+    mov edx, -1
+    lea r8, [rsp]
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .scan_open_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r13
+    mov rcx, rbx
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .scan_open_finalize_error
+    mov rax, [rsp]
+    mov [r12 - 8], rax
+    ; statement_out is the fourth argument and lives in r15 for the final store.
+    ; Preserve it before any SQLite call using the caller-provided stack slot.
+    mov rax, [rsp]
+    mov [r12 - 8], rax
+    xor eax, eax
+    jmp .scan_open_done
+.scan_open_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.scan_open_error:
+    mov eax, -1
+.scan_open_done:
+    add rsp, 16
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_scan_next(stmt,key_out,key_capacity,key_len_out,value_out,
+;                        value_capacity,value_len_out)
+; Returns 1 for a row, 0 at end, -1 on error/capacity failure.
+db_store_scan_next:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 40
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    mov rbx, r8
+    mov [rsp], r9
+    mov rax, [rbp + 16]
+    mov [rsp + 8], rax
+    mov rax, [rbp + 24]
+    mov [rsp + 16], rax
+    test r12, r12
+    jz .scan_next_error
+    test r15, r15
+    jz .scan_next_error
+    cmp qword [rsp + 8], 0
+    je .scan_next_error
+    cmp qword [rsp + 16], 0
+    je .scan_next_error
+    mov rdi, r12
+    call sqlite3_step
+    cmp eax, SQLITE_ROW
+    je .scan_next_row
+    cmp eax, SQLITE_DONE
+    je .scan_next_end
+    jmp .scan_next_error
+.scan_next_row:
+    mov rdi, r12
+    xor esi, esi
+    call sqlite3_column_bytes
+    mov [rsp + 24], rax
+    cmp rax, r14
+    ja .scan_next_error
+    test rax, rax
+    jz .scan_next_key_done
+    test r13, r13
+    jz .scan_next_error
+    mov rdi, r12
+    xor esi, esi
+    call sqlite3_column_blob
+    mov rsi, rax
+    mov rdi, r13
+    mov rcx, [rsp + 24]
+    rep movsb
+.scan_next_key_done:
+    mov rdi, r12
+    mov esi, 1
+    call sqlite3_column_bytes
+    mov [rsp + 32], rax
+    cmp rax, [rsp]
+    ja .scan_next_error
+    test rax, rax
+    jz .scan_next_value_done
+    test rbx, rbx
+    jz .scan_next_error
+    mov rdi, r12
+    mov esi, 1
+    call sqlite3_column_blob
+    mov rsi, rax
+    mov rdi, rbx
+    mov rcx, [rsp + 32]
+    rep movsb
+.scan_next_value_done:
+    mov rax, [rsp + 16]
+    mov rcx, [rsp + 24]
+    mov [rax], rcx
+    mov rax, [rsp + 8]
+    mov rcx, [rsp + 32]
+    mov [rax], rcx
+    mov eax, 1
+    jmp .scan_next_done
+.scan_next_end:
+    xor eax, eax
+    jmp .scan_next_done
+.scan_next_error:
+    mov eax, -1
+.scan_next_done:
+    add rsp, 40
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+; int db_store_scan_close(statement)
+db_store_scan_close:
+    test rdi, rdi
+    jz .scan_close_error
+    jmp sqlite3_finalize
+.scan_close_error:
+    mov eax, -1
     ret
