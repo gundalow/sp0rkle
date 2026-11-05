@@ -188,72 +188,138 @@ bot_context_prepare_privmsg:
 .context_trimmed:
 .context_trailing:
     cmp r11, r10
-    jbe .context_no_trailing
+    jbe .context_try_prefix
     lea rax, [r11 - 1]
     movzx ecx, byte [r12 + rax]
     cmp cl, ' '
     je .context_trail_one
     cmp cl, 9
-    jb .context_no_trailing
+    jb .context_try_prefix
     cmp cl, 13
     jbe .context_trail_one
-    jmp .context_no_trailing
+    jmp .context_try_prefix
 .context_trail_one:
     dec r11
     jmp .context_trailing
-.context_no_trailing:
-    mov [rbp - 56], r10         ; trimmed start
-    mov [rbp - 64], r11         ; trimmed end
 
-    ; Initialise caller outputs to the trimmed, unprefixed text.
-    mov r8, [rbp - 88]
-    mov [r8], r10
+.context_try_prefix:
+    mov [rbp - 56], r10         ; default output start
+    mov [rbp - 64], r11         ; default output end
+    test r15, r15
+    jz .context_unprefixed
     mov rax, r11
     sub rax, r10
-    mov r8, [rbp - 96]
-    mov [r8], rax
+    lea rcx, [r15 + 1]
+    cmp rax, rcx
+    jb .context_unprefixed
+    xor r8d, r8d
+.context_prefix_compare:
+    cmp r8, r15
+    jae .context_check_delimiter
+    mov rax, r10
+    add rax, r8
+    movzx eax, byte [r12 + rax]
+    mov rdx, r8
+    movzx edx, byte [r14 + rdx]
+    cmp al, 'A'
+    jb .context_text_folded
+    cmp al, 'Z'
+    ja .context_text_folded
+    add al, 32
+.context_text_folded:
+    cmp dl, 'A'
+    jb .context_nick_folded
+    cmp dl, 'Z'
+    ja .context_nick_folded
+    add dl, 32
+.context_nick_folded:
+    cmp al, dl
+    jne .context_unprefixed
+    inc r8
+    jmp .context_prefix_compare
 
-    lea rdi, [r12 + r10]
-    mov rsi, r11
-    sub rsi, r10
-    mov rdx, r14
-    mov rcx, r15
-    mov r8, [rbp - 88]
-    mov r9, [rbp - 96]
-    call bot_strip_address_prefix
-    test eax, eax
-    jz .context_unprefixed
+.context_check_delimiter:
+    mov rax, r10
+    add rax, r15
+    mov al, [r12 + rax]
+    cmp al, ':'
+    je .context_prefix_found
+    cmp al, ';'
+    je .context_prefix_found
+    cmp al, ','
+    je .context_prefix_found
+    cmp al, '>'
+    je .context_prefix_found
+    cmp al, '-'
+    jne .context_unprefixed
 
-    ; The prefix helper returned a relative offset. Convert it to an
-    ; offset in the original IRC line.
-    mov r8, [rbp - 88]
-    mov rax, [r8]
-    add rax, [rbp - 56]
-    mov [r8], rax
+.context_prefix_found:
+    lea r10, [r10 + r15 + 1]
+.context_prefix_leading:
+    cmp r10, r11
+    jae .context_prefix_empty
+    movzx eax, byte [r12 + r10]
+    cmp al, ' '
+    je .context_prefix_lead_one
+    cmp al, 9
+    jb .context_prefix_trailing
+    cmp al, 13
+    jbe .context_prefix_lead_one
+    jmp .context_prefix_trailing
+.context_prefix_lead_one:
+    inc r10
+    jmp .context_prefix_leading
+.context_prefix_trailing:
+    cmp r11, r10
+    jbe .context_prefix_empty
+    lea rax, [r11 - 1]
+    movzx ecx, byte [r12 + rax]
+    cmp cl, ' '
+    je .context_prefix_trail_one
+    cmp cl, 9
+    jb .context_prefix_store
+    cmp cl, 13
+    jbe .context_prefix_trail_one
+    jmp .context_prefix_store
+.context_prefix_trail_one:
+    dec r11
+    jmp .context_prefix_trailing
+.context_prefix_empty:
+    mov r11, r10
+.context_prefix_store:
+    mov [rbp - 56], r10
+    mov [rbp - 64], r11
     mov edx, 1
-    jmp .context_store_addressed
+    jmp .context_store
 
 .context_unprefixed:
     xor edx, edx
     ; The reference uses exact string equality for target == bot nick.
     mov r8, [rbp - 48]
     cmp r8, r15
-    jne .context_store_addressed
+    jne .context_store
     test r15, r15
-    jz .context_store_addressed
+    jz .context_store
     xor r9d, r9d
 .context_target_compare:
     cmp r9, r15
     jae .context_private
     mov r8b, [rbx + r9]
     cmp r8b, [r14 + r9]
-    jne .context_store_addressed
+    jne .context_store
     inc r9
     jmp .context_target_compare
 .context_private:
     mov edx, 1
 
-.context_store_addressed:
+.context_store:
+    mov rax, [rbp - 56]
+    mov r8, [rbp - 88]
+    mov [r8], rax
+    mov rax, [rbp - 64]
+    sub rax, [rbp - 56]
+    mov r8, [rbp - 96]
+    mov [r8], rax
     mov r8, [rbp - 104]
     mov [r8], rdx
     xor eax, eax
