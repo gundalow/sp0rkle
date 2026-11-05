@@ -59,9 +59,6 @@ bot_nick_ignore_should_process:
 .blocked:
     xor eax, eax
 .restore:
-    mov rsp, rbp
-    ; RBP is not used as a frame pointer; restore the saved stack using
-    ; the known allocation size instead.
     ; Recompute the rounded allocation before releasing it.
     mov rax, r13
     inc rax
@@ -72,6 +69,7 @@ bot_nick_ignore_should_process:
 .allow:
     mov eax, 1
 .done:
+    pop r15
     pop r15
     pop r14
     pop r13
@@ -89,15 +87,16 @@ bot_filter_pipeline_should_process:
     push r12
     push r13
     push r14
+    push r15
     mov r12, rdi
     mov r13d, esi
     mov r14, rdx
     mov rbx, rcx
-    xor r10d, r10d
+    xor r15d, r15d
 .scan:
-    cmp r10d, r13d
+    cmp r15d, r13d
     jae .pass
-    mov rax, r10
+    mov rax, r15
     shl rax, 4
     lea r11, [r12 + rax]
     mov rax, [r11]
@@ -110,7 +109,7 @@ bot_filter_pipeline_should_process:
     test eax, eax
     jz .reject
 .next:
-    inc r10d
+    inc r15d
     jmp .scan
 .pass:
     mov eax, 1
