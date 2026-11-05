@@ -49,6 +49,7 @@ commit_sql: db "COMMIT", 0
 rollback_sql: db "ROLLBACK", 0
 put_sql: db "INSERT INTO kv(path,key,value) VALUES(?1,?2,?3) ON CONFLICT(path,key) DO UPDATE SET value=excluded.value", 0
 get_sql: db "SELECT value FROM kv WHERE path=?1 AND key=?2", 0
+empty_blob: db 0
 delete_sql: db "DELETE FROM kv WHERE path=?1 AND key=?2", 0
 seq_next_sql: db "INSERT INTO sequences(path,value) VALUES(?1,1) ON CONFLICT(path) DO UPDATE SET value=value+1 RETURNING value", 0
 seq_set_sql: db "INSERT INTO sequences(path,value) VALUES(?1,?2) ON CONFLICT(path) DO UPDATE SET value=excluded.value", 0
@@ -215,6 +216,10 @@ db_store_put:
     mov rdi, [rsp + 16]
     mov esi, 3
     mov rdx, [rsp]
+    cmp qword [rsp + 8], 0
+    jne .put_value_pointer_ready
+    lea rdx, [rel empty_blob]
+.put_value_pointer_ready:
     mov rcx, [rsp + 8]
     mov r8, SQLITE_TRANSIENT
     call sqlite3_bind_blob
