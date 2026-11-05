@@ -34,7 +34,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Added `bot_irc_privmsg_command_process`, which composes parsed user PRIVMSG extraction, Context preparation, raw-body factoid detection, nick filtering, addressed gating, longest-prefix command matching and argument normalization.
 - Added a C integration test covering a channel message through successful dispatch, filter rejection/output clearing, and factoid-addition bypass.
 - Added `docs/IRC_COMMAND_ABI.md` and wired the assembly module and regression test into the Makefile.
-- The adapter returns the opaque handler pointer; actual handler invocation and domain-specific command implementations remain outstanding.
+- Added `bot_irc_privmsg_execute` to invoke the selected handler synchronously using a documented language-neutral callback ABI; regression coverage verifies Context fields, normalized arguments and callback result propagation.
+- Domain-specific command implementations and the full runtime lifecycle remain outstanding.
 
 ### IRC PRIVMSG Context adapter
 
