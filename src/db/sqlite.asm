@@ -799,10 +799,13 @@ db_store_scan_open:
     push rbx
     push r12
     push r13
+    push r14
+    push r15
     sub rsp, 16
     mov r12, rdi
     mov r13, rsi
-    mov rbx, rdx
+    mov r14, rdx
+    mov r15, rcx
     mov qword [rsp], 0
     test r12, r12
     jz .scan_open_error
@@ -820,17 +823,13 @@ db_store_scan_open:
     mov rdi, [rsp]
     mov esi, 1
     mov rdx, r13
-    mov rcx, rbx
+    mov rcx, r14
     mov r8, SQLITE_TRANSIENT
     call sqlite3_bind_blob
     test eax, eax
     jnz .scan_open_finalize_error
     mov rax, [rsp]
-    mov [r12 - 8], rax
-    ; statement_out is the fourth argument and lives in r15 for the final store.
-    ; Preserve it before any SQLite call using the caller-provided stack slot.
-    mov rax, [rsp]
-    mov [r12 - 8], rax
+    mov [r15], rax
     xor eax, eax
     jmp .scan_open_done
 .scan_open_finalize_error:
@@ -840,6 +839,8 @@ db_store_scan_open:
     mov eax, -1
 .scan_open_done:
     add rsp, 16
+    pop r15
+    pop r14
     pop r13
     pop r12
     pop rbx
@@ -865,15 +866,11 @@ db_store_scan_next:
     mov [rsp], r9
     mov rax, [rbp + 16]
     mov [rsp + 8], rax
-    mov rax, [rbp + 24]
-    mov [rsp + 16], rax
     test r12, r12
     jz .scan_next_error
     test r15, r15
     jz .scan_next_error
     cmp qword [rsp + 8], 0
-    je .scan_next_error
-    cmp qword [rsp + 16], 0
     je .scan_next_error
     mov rdi, r12
     call sqlite3_step
@@ -919,9 +916,8 @@ db_store_scan_next:
     mov rcx, [rsp + 32]
     rep movsb
 .scan_next_value_done:
-    mov rax, [rsp + 16]
     mov rcx, [rsp + 24]
-    mov [rax], rcx
+    mov [r15], rcx
     mov rax, [rsp + 8]
     mov rcx, [rsp + 32]
     mov [rax], rcx
