@@ -28,22 +28,23 @@ main:
     mov r12, rsi
     cmp rdi, 1
     jle .default
-    mov rdi, [r12 + 8]
-    mov rsi, arg_version
+    lea rdi, [rel arg_version]
+    mov rsi, [r12 + 8]
+    xchg rdi, rsi
     call strcmp
     test eax, eax
     jz .version
     mov rdi, [r12 + 8]
-    mov rsi, arg_selftest
+    lea rsi, [rel arg_selftest]
     call strcmp
     test eax, eax
     jz .selftest
-    mov rdi, usage_text
+    lea rdi, [rel usage_text]
     call puts
     mov eax, 2
     jmp .done
 .version:
-    mov rdi, version_text
+    lea rdi, [rel version_text]
     call puts
     xor eax, eax
     jmp .done
@@ -51,7 +52,7 @@ main:
     call run_selftest
     jmp .done
 .default:
-    mov rdi, startup_text
+    lea rdi, [rel startup_text]
     call puts
     xor eax, eax
 .done:
@@ -63,25 +64,25 @@ main:
 run_selftest:
     push rbp
     mov rbp, rsp
-    mov rdi, test_irc_line
+    lea rdi, [rel test_irc_line]
     call irc_line_length
     cmp rax, 12
     jne .failed
-    mov rdi, test_upper
-    mov rsi, test_lower
+    lea rdi, [rel test_upper]
+    lea rsi, [rel test_lower]
     call str_ascii_casecmp
     test eax, eax
     jne .failed
-    mov rdi, test_upper
+    lea rdi, [rel test_upper]
     call str_len
     cmp rax, 7
     jne .failed
-    mov rdi, selftest_ok
+    lea rdi, [rel selftest_ok]
     call puts
     xor eax, eax
     jmp .return
 .failed:
-    mov rdi, selftest_fail
+    lea rdi, [rel selftest_fail]
     call puts
     mov eax, 1
 .return:
