@@ -38,8 +38,8 @@ extern long karma_parse_annotations(const char *, size_t, struct annotation *, s
 extern long karma_apply_annotations(const struct apply_request *);
 
 int main(void) {
-    char filename[]="/tmp/sp0rkle-karma-store-XXXXXX";
-    int fd=mkstemp(filename); assert(fd>=0); close(fd);
+    char filename[128];
+    snprintf(filename,sizeof(filename),"/tmp/sp0rkle-karma-store-%ld.db",(long)getpid());
     void *db=NULL; assert(db_store_open(filename,&db)==0);
     unsigned char bson[1024], encoded_key[256];
     char subject[128], keybuf[128], upvoter[128], downvoter[128];
