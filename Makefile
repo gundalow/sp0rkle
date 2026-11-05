@@ -28,7 +28,7 @@ $(BUILD_DIR)/%.o: src/%.asm
 $(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
 
-$(IRC_COMMAND_TEST): tests/irc_command_test.c $(BUILD_DIR)/bot/irc_command.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/commands.o $(BUILD_DIR)/bot/filters.o
+$(IRC_COMMAND_TEST): tests/irc_command_test.c $(BUILD_DIR)/bot/irc_command.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o $(BUILD_DIR)/bot/commands.o $(BUILD_DIR)/bot/filters.o
 	$(CC) -no-pie -o $@ $^
 
 $(TRANSPORT_TEST): tests/transport_test.c $(TRANSPORT_TEST_OBJECTS)
