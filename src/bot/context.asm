@@ -94,12 +94,12 @@ bot_strip_address_prefix:
     lea rax, [r11 - 1]
     cmp rax, r10
     jb .store
-    mov al, [r12 + rax]
-    cmp al, ' '
+    movzx ecx, byte [r12 + rax]
+    cmp cl, ' '
     je .trail_more
-    cmp al, 9
+    cmp cl, 9
     jb .store
-    cmp al, 13
+    cmp cl, 13
     jbe .trail_more
     jmp .store
 .trail_more:
