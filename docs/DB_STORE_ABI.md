@@ -25,10 +25,14 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 - db_store_bucket_exists(handle, path, path_len): returns 1 if the exact path exists, 0 if absent, or -1 on error.
 - db_store_bucket_delete(handle, path, path_len): recursively deletes values, sequences, and bucket records whose paths begin with the supplied non-empty path. The root bucket cannot be deleted. A SQLite savepoint makes the operation atomic and allows it inside an outer transaction.
 
+- db_store_scan_open(handle, path, path_len, statement_out): opens a read cursor over the exact bucket path, ordered by bytewise key.
+- db_store_scan_next(statement, key_out, key_capacity, key_len_out, value_out, value_capacity, value_len_out): copies the next row into caller buffers and returns 1 for a row, 0 at end, or -1 on error/capacity failure.
+- db_store_scan_close(statement): finalizes the cursor.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
 
 ## Compatibility work still required
 
-The current layer does not yet implement bucket enumeration, keyed/indexed collection policies, BSON marshal/unmarshal, index pointer maintenance, fsck, or scheduled compressed backups. It also does not read existing BoltDB files. These remain explicit feature-parity tasks.
+The current layer supports ordered scans of one exact bucket, but does not yet implement recursive subtree scans, keyed/indexed collection policies, BSON marshal/unmarshal, index pointer maintenance, fsck, or scheduled compressed backups. It also does not read existing BoltDB files. These remain explicit feature-parity tasks.
