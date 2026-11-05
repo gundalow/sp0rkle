@@ -36,28 +36,22 @@ int main(void) {
     check("Bot", "bot", 0, NULL);
     check("Other: hello", "bot", 0, NULL);
     check("Bot:", "bot", 1, "");
-    size_t start, len;
-    int addressed;
     const char *prefixed = "  Bot: hello  ";
-    assert(bot_context_prepare_privmsg(prefixed, strlen(prefixed),
-                                       "Bot", 3, "#chan", 5,
-                                       &start, &len, &addressed) == 0);
-    assert(start == 7 && len == 5 && addressed == 1);
-    assert(memcmp(prefixed + start, "hello", len) == 0);
+    struct bot_context_result result = bot_context_prepare_privmsg(
+        prefixed, strlen(prefixed), "Bot", 3, "#chan", 5);
+    assert(result.start == 7 && result.len == 5 && result.addressed == 1);
+    assert(memcmp(prefixed + result.start, "hello", result.len) == 0);
 
     const char *plain = "  hello  ";
-    assert(bot_context_prepare_privmsg(plain, strlen(plain),
-                                       "Bot", 3, "Bot", 3,
-                                       &start, &len, &addressed) == 0);
-    assert(start == 2 && len == 5 && addressed == 1);
-    assert(bot_context_prepare_privmsg(plain, strlen(plain),
-                                       "Bot", 3, "bot", 3,
-                                       &start, &len, &addressed) == 0);
-    assert(addressed == 0); /* target equality follows the Go exact compare */
-    assert(bot_context_prepare_privmsg(plain, strlen(plain),
-                                       "Bot", 3, "#chan", 5,
-                                       &start, &len, &addressed) == 0);
-    assert(start == 2 && len == 5 && addressed == 0);
+    result = bot_context_prepare_privmsg(plain, strlen(plain),
+                                         "Bot", 3, "Bot", 3);
+    assert(result.start == 2 && result.len == 5 && result.addressed == 1);
+    result = bot_context_prepare_privmsg(plain, strlen(plain),
+                                         "Bot", 3, "bot", 3);
+    assert(result.addressed == 0); /* target equality follows exact Go compare */
+    result = bot_context_prepare_privmsg(plain, strlen(plain),
+                                         "Bot", 3, "#chan", 5);
+    assert(result.start == 2 && result.len == 5 && result.addressed == 0);
     puts("context tests: PASS");
     return 0;
 }
