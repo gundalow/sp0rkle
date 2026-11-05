@@ -2,6 +2,7 @@ default rel
 
 global bot_command_match
 global bot_command_normalize_args
+global bot_command_dispatch
 
 ; struct bot_command_entry (32 bytes):
 ;   +0  const char *prefix
@@ -174,4 +175,115 @@ bot_command_normalize_args:
     pop r13
     pop r12
     pop rbx
+    ret
+
+
+; int bot_command_dispatch(entries, count, text, text_len, addressed,
+;                          factoid_predicate, out_args, out_capacity,
+;                          out_handler)
+; factoid_predicate(text, text_len) returns nonzero for a factoid addition.
+; Returns 1 when dispatched, 0 when ignored/no matching command, -1 on
+; output-buffer error. out_handler receives the opaque handler pointer.
+; Output args are the matched suffix with ASCII whitespace normalized.
+; Filters are intentionally applied by the caller before this routine.
+bot_command_dispatch:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 8
+
+    mov r12, rdi                ; entries
+    mov r13d, esi               ; count
+    mov r14, rdx                ; original text
+    mov r15, rcx                ; text length
+    mov ebx, r8d                ; addressed
+    mov r10, r9                 ; factoid predicate
+    mov r11, [rbp + 16]         ; out_args
+    mov rax, [rbp + 24]         ; out_capacity
+    mov [rbp - 48], rax
+    mov rax, [rbp + 32]         ; out_handler
+    mov [rbp - 56], rax
+
+    test r11, r11
+    jz .invalid
+    cmp qword [rbp - 48], 0
+    je .invalid
+    mov byte [r11], 0
+    mov rax, [rbp - 56]
+    test rax, rax
+    jz .invalid
+    mov qword [rax], 0
+
+    test r10, r10
+    jz .addressed
+    mov rdi, r14
+    mov rsi, r15
+    call r10
+    test eax, eax
+    jnz .not_dispatched
+
+.addressed:
+    test ebx, ebx
+    jz .not_dispatched
+    mov rdi, r12
+    mov esi, r13d
+    mov rdx, r14
+    mov rcx, r15
+    xor r8d, r8d
+    call bot_command_match
+    test rax, rax
+    jz .not_dispatched
+
+    mov rdx, [rax + 16]         ; handler
+    test rdx, rdx
+    jz .not_dispatched
+    mov r8, [rbp - 56]
+    mov [r8], rdx
+
+    mov rdx, [rbp - 48]
+    mov rdi, r14
+    mov rsi, r15
+    ; Matched prefix length is recomputed from the selected entry.
+    mov rcx, [rax + 8]
+    add rdi, rcx
+    sub rsi, rcx
+    mov rsi, rsi
+    mov rdx, [rbp + 16]
+    mov rcx, [rbp - 48]
+    ; Preserve selected entry's prefix length before the call in r9.
+    mov r9, [rax + 8]
+    mov rdi, r14
+    add rdi, r9
+    mov rsi, r15
+    sub rsi, r9
+    mov rdx, [rbp + 16]
+    mov rcx, [rbp - 48]
+    call bot_command_normalize_args
+    test rax, rax
+    js .buffer_error
+    mov eax, 1
+    jmp .done
+
+.not_dispatched:
+    xor eax, eax
+    jmp .done
+.buffer_error:
+    mov r8, [rbp - 56]
+    mov qword [r8], 0
+    mov eax, -1
+    jmp .done
+.invalid:
+    mov eax, -1
+.done:
+    add rsp, 8
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
     ret
