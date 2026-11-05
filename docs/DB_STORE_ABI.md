@@ -50,7 +50,9 @@ The caller supplies the collection root path, encoded parent path, and final key
 
 `db_store_indexed_update(handle, request)` applies an indexed-record mutation atomically using a SQLite savepoint. The 80-byte request contains canonical value path/key/value at offsets 0/8, 16/24 and 32/40; old index entries pointer/count at 48/56; and new index entries pointer/count at 64/72. Each index entry is the same 48-byte path/key/value tuple used by batch upsert.
 
-The operation deletes the caller-supplied old index keys, upserts the canonical BSON value, then writes the new index pointers. Any failure rolls back the entire mutation, including when nested inside an outer transaction. The caller must decode the old record and derive the complete old/new index sets; stale-index discovery and fsck repair remain higher-level responsibilities.
+The operation deletes the caller-supplied old index keys, upserts the canonical BSON value, then writes the new index pointers.
+`db_store_indexed_delete(handle, request)` uses a 56-byte request containing canonical value path/key and the complete old index-entry array. It removes all supplied index keys and the canonical value inside one savepoint, rolling the whole deletion back on failure.
+ Any failure rolls back the entire mutation, including when nested inside an outer transaction. The caller must decode the old record and derive the complete old/new index sets; stale-index discovery and fsck repair remain higher-level responsibilities.
 
 `db_store_indexed_get(handle, request)` resolves a nested index key to its stored ObjectId pointer, then loads the canonical BSON value from the values path. A direct `_id` pointer at the index root bypasses index resolution, matching the reference collection's pointer fast path. Its 104-byte request describes values path, indexes root/path, index key, pointer scratch and BSON output buffers.
 
