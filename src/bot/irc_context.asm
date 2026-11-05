@@ -203,13 +203,13 @@ bot_irc_privmsg_context:
     mov r8, [r8 + 16]
     mov r9, [rbp - 56]
     mov r9, [r9 + 24]
-    lea rax, [rbp - 80]
-    mov [rsp], rax
-    lea rax, [rbp - 88]
-    mov [rsp + 8], rax
-    lea rax, [rbp - 96]
-    mov [rsp + 16], rax
     call bot_context_prepare_privmsg
+    ; Context preparation returns {start in RAX, len/addressed packed in RDX}.
+    mov [rbp - 80], rax
+    mov ecx, edx
+    mov [rbp - 88], rcx
+    shr rdx, 32
+    mov [rbp - 96], edx
 
     ; Replace raw text view with the trimmed/address-prefix-stripped body.
     mov rax, [rbp - 56]
