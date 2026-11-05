@@ -357,3 +357,117 @@ irc_session_next:
     pop rbx
     pop rbp
     ret
+
+; int irc_send_join(int fd, const char *channel)
+; Sends JOIN <channel>\r\n. Channel is trusted configuration and must not
+; contain CR/LF. Returns 0 on success, -1 on formatting/send error.
+global irc_send_join
+extern snprintf
+extern irc_tcp_send_all
+
+section .rodata
+join_format: db "JOIN %s", 13, 10, 0
+
+section .text
+irc_send_join:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    sub rsp, 520
+
+    mov r12d, edi
+    mov rbx, rsi
+    mov rdi, rsp
+    mov esi, 512
+    lea rdx, [rel join_format]
+    mov rcx, rbx
+    xor eax, eax
+    call snprintf
+    test eax, eax
+    js .join_error
+    cmp eax, 512
+    jae .join_error
+    mov edx, eax
+    mov edi, r12d
+    mov rsi, rsp
+    call irc_tcp_send_all
+    jmp .join_return
+.join_error:
+    mov eax, -1
+.join_return:
+    add rsp, 520
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+; int irc_session_wait_welcome(int fd, char *line, size_t capacity,
+;                              struct irc_message *out)
+; Discards ordinary registration events until numeric 001 arrives. PING is
+; handled by irc_session_next. Returns 1 on welcome, 0 on EOF, -1 on I/O or
+; parse error, and -2 if numeric 433 reports nickname already in use.
+global irc_session_wait_welcome
+extern irc_session_next
+extern str_ascii_casecmp_n
+
+section .rodata
+numeric_welcome: db "001"
+numeric_nick_in_use: db "433"
+
+section .text
+irc_session_wait_welcome:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+
+    mov r12d, edi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+.welcome_loop:
+    mov edi, r12d
+    mov rsi, r13
+    mov rdx, r14
+    mov rcx, r15
+    call irc_session_next
+    test eax, eax
+    jle .welcome_return
+
+    cmp dword [r15 + 20], 3
+    jne .welcome_loop
+    mov rdi, r13
+    mov esi, [r15 + 16]
+    add rdi, rsi
+    lea rsi, [rel numeric_welcome]
+    mov edx, 3
+    call str_ascii_casecmp_n
+    test eax, eax
+    jz .welcome_ok
+
+    mov rdi, r13
+    mov esi, [r15 + 16]
+    add rdi, rsi
+    lea rsi, [rel numeric_nick_in_use]
+    mov edx, 3
+    call str_ascii_casecmp_n
+    test eax, eax
+    jz .nick_in_use
+    jmp .welcome_loop
+.welcome_ok:
+    mov eax, 1
+    jmp .welcome_return
+.nick_in_use:
+    mov eax, -2
+.welcome_return:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
