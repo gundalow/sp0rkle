@@ -8,6 +8,7 @@
 extern int db_store_open(const char *, void **);
 extern int db_store_close(void *);
 extern int db_store_backup(void *, const char *);
+extern int db_store_integrity_check(void *);
 extern int db_store_begin(void *);
 extern int db_store_commit(void *);
 extern int db_store_rollback(void *);
@@ -44,6 +45,7 @@ int main(void) {
 
     assert(db_store_open(filename, &db) == 0);
     assert(db != NULL);
+    assert(db_store_integrity_check(db)==0);
     assert(db_store_bucket_exists(db, "", 0) == 1);
     assert(db_store_bucket_delete(db, "", 0) == -1);
     const unsigned char parent_name[] = {'p', 0, 'r'};
