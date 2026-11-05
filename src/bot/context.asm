@@ -205,52 +205,55 @@ bot_context_prepare_privmsg:
     mov [rbp - 56], r10         ; trimmed start
     mov [rbp - 64], r11         ; trimmed end
 
+    ; Initialise caller outputs to the trimmed, unprefixed text.
+    mov r8, [rbp - 88]
+    mov [r8], r10
+    mov rax, r11
+    sub rax, r10
+    mov r8, [rbp - 96]
+    mov [r8], rax
+
     lea rdi, [r12 + r10]
     mov rsi, r11
     sub rsi, r10
     mov rdx, r14
     mov rcx, r15
-    lea r8, [rbp - 72]
-    lea r9, [rbp - 80]
+    mov r8, [rbp - 88]
+    mov r9, [rbp - 96]
     call bot_strip_address_prefix
     test eax, eax
     jz .context_unprefixed
 
-    mov rax, [rbp - 56]
-    add rax, [rbp - 72]
-    mov rcx, [rbp - 80]
-    mov rdx, 1
-    jmp .context_store
+    ; The prefix helper returned a relative offset. Convert it to an
+    ; offset in the original IRC line.
+    mov r8, [rbp - 88]
+    mov rax, [r8]
+    add rax, [rbp - 56]
+    mov [r8], rax
+    mov edx, 1
+    jmp .context_store_addressed
 
 .context_unprefixed:
-    mov rax, [rbp - 56]
-    mov rcx, [rbp - 64]
-    sub rcx, rax
     xor edx, edx
-
     ; The reference uses exact string equality for target == bot nick.
     mov r8, [rbp - 48]
     cmp r8, r15
-    jne .context_store
+    jne .context_store_addressed
     test r15, r15
-    jz .context_store
+    jz .context_store_addressed
     xor r9d, r9d
 .context_target_compare:
     cmp r9, r15
     jae .context_private
     mov r8b, [rbx + r9]
     cmp r8b, [r14 + r9]
-    jne .context_store
+    jne .context_store_addressed
     inc r9
     jmp .context_target_compare
 .context_private:
     mov edx, 1
 
-.context_store:
-    mov r8, [rbp - 88]
-    mov [r8], rax
-    mov r8, [rbp - 96]
-    mov [r8], rcx
+.context_store_addressed:
     mov r8, [rbp - 104]
     mov [r8], rdx
     xor eax, eax
