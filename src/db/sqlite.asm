@@ -3,6 +3,7 @@ default rel
 global db_store_open
 global db_store_close
 global db_store_backup
+global db_store_integrity_check
 global db_store_begin
 global db_store_commit
 global db_store_rollback
@@ -37,6 +38,7 @@ extern sqlite3_bind_int64
 extern sqlite3_backup_init
 extern sqlite3_backup_step
 extern sqlite3_backup_finish
+extern sqlite3_column_text
 
 %define SQLITE_OPEN_READWRITE 0x00000002
 %define SQLITE_OPEN_CREATE    0x00000004
@@ -72,6 +74,7 @@ savepoint_sql: db "SAVEPOINT bucket_delete", 0
 rollback_savepoint_sql: db "ROLLBACK TO bucket_delete", 0
 release_sql: db "RELEASE bucket_delete", 0
 main_db_name: db "main", 0
+integrity_sql: db "PRAGMA integrity_check", 0
 batch_savepoint_sql: db "SAVEPOINT batch_put", 0
 batch_rollback_sql: db "ROLLBACK TO batch_put", 0
 batch_release_sql: db "RELEASE batch_put", 0
@@ -1290,6 +1293,60 @@ db_store_backup:
     add rsp, 24
     pop r14
     pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_integrity_check(handle)
+; Runs SQLite's full integrity_check and requires the single result 'ok'.
+db_store_integrity_check:
+    push rbx
+    push r12
+    sub rsp, 16
+    mov r12, rdi
+    mov qword [rsp], 0
+    test r12, r12
+    jz .integrity_error
+    mov rdi, r12
+    lea rsi, [rel integrity_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .integrity_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_ROW
+    jne .integrity_finalize_error
+    mov rdi, [rsp]
+    xor esi, esi
+    call sqlite3_column_text
+    test rax, rax
+    jz .integrity_finalize_error
+    cmp byte [rax], 'o'
+    jne .integrity_finalize_error
+    cmp byte [rax + 1], 'k'
+    jne .integrity_finalize_error
+    cmp byte [rax + 2], 0
+    jne .integrity_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_DONE
+    jne .integrity_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .integrity_error
+    xor eax, eax
+    jmp .integrity_done
+.integrity_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.integrity_error:
+    mov eax, -1
+.integrity_done:
+    add rsp, 16
     pop r12
     pop rbx
     ret
