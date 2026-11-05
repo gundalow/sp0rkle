@@ -12,6 +12,9 @@ struct bot_command_entry {
     const char *help;
 };
 
+extern const char *bot_command_help_text(const struct bot_command_entry *, uint32_t,
+                                       const char *, size_t);
+
 extern int bot_is_factoid_addition(const char *, size_t);
 
 extern int bot_command_dispatch(const struct bot_command_entry *, uint32_t,
@@ -58,6 +61,8 @@ int main(void) {
     assert(out_len == 0 && normalized[0] == 0);
     out_len = bot_command_normalize_args("hello", 5, normalized, 5);
     assert(out_len == -1 && normalized[0] == 0);
+    assert(bot_command_help_text(entries, 5, "Remind List 1", 13) == entries[2].help);
+    assert(bot_command_help_text(entries, 5, "unknown", 7) == NULL);
     assert(bot_is_factoid_addition("fact:is true", 12) == 1);
     assert(bot_is_factoid_addition("FACT:IS value", 13) == 1);
     assert(bot_is_factoid_addition("key:=value", 10) == 1);
