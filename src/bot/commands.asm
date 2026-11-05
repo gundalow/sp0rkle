@@ -280,30 +280,18 @@ bot_command_dispatch:
 ; either ":is" or ":=". Operates on explicit-length bytes.
 bot_is_factoid_addition:
     xor r8d, r8d
-    xor r9d, r9d
 .scan_fact:
     lea rax, [r8 + 3]
     cmp rax, rsi
     ja .check_equal
-    movzx eax, byte [rdi + r8]
-    cmp al, ':'
+    cmp byte [rdi + r8], ':'
     jne .check_equal
     movzx eax, byte [rdi + r8 + 1]
-    cmp al, 'I'
-    jb .check_is_lower
-    cmp al, 'S'
-    ja .check_is_lower
-    add al, 32
-.check_is_lower:
+    or al, 32
     cmp al, 'i'
     jne .check_equal
     movzx eax, byte [rdi + r8 + 2]
-    cmp al, 'S'
-    jb .check_s_lower
-    cmp al, 'S'
-    ja .check_s_lower
-    add al, 32
-.check_s_lower:
+    or al, 32
     cmp al, 's'
     je .fact_yes
 .check_equal:
