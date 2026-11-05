@@ -1,7 +1,7 @@
 NASM ?= nasm
 CC ?= cc
 BUILD_DIR := build
-SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/db/sqlite.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_bson.asm src/features/karma_store.asm src/features/karma_event.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
+SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/db/bson.asm src/db/sqlite.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_bson.asm src/features/karma_store.asm src/features/karma_event.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
 OBJECTS := $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/sp0rkle
 TRANSPORT_TEST := $(BUILD_DIR)/transport_test
@@ -56,7 +56,7 @@ $(KARMA_TEST): tests/karma_test.c $(BUILD_DIR)/features/karma.o
 $(KARMA_RECORD_TEST): tests/karma_record_test.c $(BUILD_DIR)/features/karma_record.o
 	$(CC) -no-pie -o $@ $^
 
-$(KARMA_BSON_TEST): tests/karma_bson_test.c $(BUILD_DIR)/features/karma_bson.o
+$(KARMA_BSON_TEST): tests/karma_bson_test.c $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/db/bson.o
 	$(CC) -no-pie -o $@ $^
 
 $(KARMA_STORE_TEST): tests/karma_store_test.c $(BUILD_DIR)/features/karma_store.o $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o
