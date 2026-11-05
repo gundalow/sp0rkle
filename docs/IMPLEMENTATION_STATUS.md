@@ -83,14 +83,19 @@ bot implementation.
 
 1. Configuration parsing, startup/shutdown, signals, time zones and logging
    levels.
-2. TCP/TLS IRC transport, registration, message parser/serializer, reconnect,
-   multi-server management and event lifecycle.
-3. Full context object and event-handler integration, command registry wiring,
-   help, rewrite pipeline and poller lifecycle.
-4. Durable storage, hierarchical key encoding, BSON-compatible records,
-   keyed/indexed collections, transactions, fsck, sequences and backups.
-5. Factoids, karma, quotes, seen, URL capture/cache/search, statistics,
-   reminders/tells and Markov.
+2. TLS IRC transport, reconnect/backoff, multi-server management and complete
+   event lifecycle; TCP connect/send/receive, registration, parser and outbound
+   PRIVMSG/ACTION/TOPIC serialization primitives are implemented.
+3. Complete runtime Context/event-handler integration, live command registry
+   configuration, built-in help responses, rewrite integration and poller
+   timer/background scheduling; lower-level command, rewrite and poller
+   primitives are implemented.
+4. Durable storage, hierarchical bucket operations, BSON-compatible records,
+   keyed/indexed collections, transactions, fsck, sequences and backups; key
+   element encoders are implemented.
+5. Factoids, complete karma collection/event/command wiring, quotes, seen, URL
+   capture/cache/search, statistics, reminders/tells and Markov; karma parser
+   and record/update primitives are implemented.
 6. Calculator, datetime, netmask, character/base/length and random decision
    commands.
 7. HTTP short-link/cache server and optional third-party integrations.
@@ -107,9 +112,10 @@ resolve SPEC.md's compatibility backlog with fixtures from the Go reference.
 ## Validation status
 
 The GitHub source branch has been populated with NASM source and build scripts.
-Compilation and tests must be run on an x86-64 Linux host with NASM, GCC, and
-Make installed; this remote repository operation cannot itself execute those
-commands.
+GitHub Actions CI assembles the NASM sources, links the executable and C
+regression harnesses, and runs `make test` on x86-64 Linux. The latest CI run
+for the branch should be checked before treating a newly pushed commit as
+validated.
 
 
 ### Context output wrappers
