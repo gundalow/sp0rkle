@@ -52,15 +52,17 @@ capacity is available.
 ## Command dispatch orchestration
 
 `bot_command_dispatch(entries, count, text, text_len, addressed,
-factoid_predicate, out_args, out_capacity, out_handler)`
+factoid_addition, out_args, out_capacity, out_handler)`
 
 The helper combines command selection and the addressed/factoid gates. It
 expects `text` to be the already-trimmed context message text; filters and
 context construction remain the caller's responsibility.
 
 - `addressed` must be nonzero for dispatch to proceed.
-- An optional `factoid_predicate(text, text_len)` callback returns nonzero
-  when the input is a factoid addition; such input is bypassed.
+- `factoid_addition` is a caller-computed boolean. The caller must evaluate
+  the original IRC line text with the reference factoid-addition predicate;
+  such input is bypassed. This is separate from the trimmed context text used
+  for command matching.
 - The longest matching command prefix is selected using
   `bot_command_match`.
 - The selected entry's opaque handler pointer is written to `out_handler`.
@@ -74,6 +76,5 @@ cleared and the argument buffer is empty when valid output storage is
 provided. The helper does not execute the handler. The caller must apply the
 line-filter pipeline before invoking it.
 
-The factoid callback receives the supplied context text. If compatibility
-requires checking the unmodified IRC line text, the caller should supply the
-original line text to a separate factoid check before calling dispatch.
+The caller is responsible for evaluating factoid-addition syntax against the
+unmodified IRC line text before calling dispatch.
