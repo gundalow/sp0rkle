@@ -36,7 +36,7 @@ db_key_encode_string:
     push r13
     push r14
     push r15
-    push rax
+    push r10
     sub rsp, 8
     mov [rsp], r9
     mov r12, rdi
@@ -90,7 +90,7 @@ db_key_encode_string:
     mov rax, -1
 .str_return:
     add rsp, 8
-    pop rax
+    pop r10
     pop r15
     pop r14
     pop r13
@@ -169,7 +169,6 @@ db_key_encode_bool:
     push r13
     push r14
     push r15
-    sub rsp, 8
     mov r12, rdi
     mov r13, rsi
     mov r14d, edx
@@ -207,7 +206,6 @@ db_key_encode_bool:
 .bool_error:
     mov rax, -1
 .bool_return:
-    add rsp, 8
     pop r15
     pop r14
     pop r13
