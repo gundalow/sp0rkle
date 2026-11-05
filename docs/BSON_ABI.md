@@ -18,6 +18,10 @@ The caller is responsible for supplying correctly encoded value bytes for the se
 
 `bson_find_field(doc, len, name, name_len, out)` first validates the complete document, then returns the first exact bytewise field-name match. Its 24-byte output contains the BSON type at offset 0, raw value pointer at offset 8 and raw value byte length at offset 16. It returns 1 when found, 0 when absent, or -1 for malformed input. The returned value pointer is a view into the caller's document buffer.
 
+## Scalar value decoder
+
+`bson_decode_scalar(type, raw_value, raw_len, out, capacity, out_len)` converts a field value returned by `bson_find_field`. It supports strings, int32-to-int64 widening, int64/datetime/timestamp, double bit copies, booleans, ObjectIds, Decimal128, binary payloads, nested documents/arrays and validated raw regex/DBPointer/code-with-scope values. String output is NUL-terminated; binary output omits the BSON length/subtype header; nested documents are copied whole. It returns -1 on type, bounds or capacity mismatch and does not change `out_len` on failure.
+
 ## Karma schema codec
 
 `karma_bson_encode` and `karma_bson_decode` provide the current schema-specific record codec. See `docs/KARMA_STORE_ABI.md` for its record field order, Go-compatible integer-width selection, zero-time encoding and caller-owned buffer requirements.
