@@ -62,7 +62,7 @@ karma_apply_annotations:
     shl rax, 4
     lea r15, [r13 + rax]        ; current annotation
     mov rax, [r15]              ; offset
-    add rax, [r15 + 8]          ; offset + length
+    mov ecx, [r15 + 8]          ; uint32 length (delta shares this qword)\n    add rax, rcx                ; offset + length
     jc .apply_error_frame
     cmp rax, [r12 + A_TEXT_LEN]
     ja .apply_error_frame
@@ -71,7 +71,7 @@ karma_apply_annotations:
     test rdi, rdi
     jz .apply_error_frame
     add rdi, [r15]
-    mov rsi, [r15 + 8]
+    mov esi, [r15 + 8]
     mov rdx, [r12 + A_KEY]
     mov rcx, [r12 + A_KEY_CAP]
     call karma_key_normalize
@@ -94,7 +94,7 @@ karma_apply_annotations:
     mov rcx, [r15]
     add rcx, [r12 + A_TEXT]
     mov [rax], rcx
-    mov rcx, [r15 + 8]
+    mov ecx, [r15 + 8]
     mov [rax + 8], rcx
     mov rcx, [r12 + A_KEY]
     mov [rax + 16], rcx
