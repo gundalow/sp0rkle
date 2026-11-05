@@ -27,21 +27,37 @@ global karma_bson_encode
 %%done:
 %endmacro
 
-%macro WRITE_INT32 2
+%macro WRITE_INT 2
+    mov rax, [r14 + %2]
+    cmp rax, 0x7fffffff
+    jg %%wide
+    cmp rax, -0x80000000
+    jl %%wide
     mov byte [rdi], 0x10
-    inc r13
+    inc rdi
     lea rsi, [rel %%name]
     mov ecx, %%namelen
     rep movsb
     mov byte [rdi], 0
-    inc r13
+    inc rdi
     mov eax, [r14 + %2]
     mov [rdi], eax
-    add r13, 4
+    add rdi, 4
     jmp %%done
+%%wide:
+    mov byte [rdi], 0x12
+    inc rdi
+    lea rsi, [rel %%name]
+    mov ecx, %%namelen
+    rep movsb
+    mov byte [rdi], 0
+    inc rdi
+    mov rax, [r14 + %2]
+    mov [rdi], rax
+    add rdi, 8
+%%done:
 %%name: db %1
 %%namelen equ $ - %%name
-%%done:
 %endmacro
 
 %macro WRITE_DATE 2
@@ -87,28 +103,50 @@ karma_bson_encode:
 
     ; Compute required length before touching output.
     mov r13d, 5
-    ; subject: 1 + 8 + 4 + len + 1
-    mov eax, [r14 + 8]
+    ; String lengths are uint32 in BSON; reject unrepresentable fields.
+    mov rax, [r14 + 8]
+    cmp rax, 0xffffffff
+    ja .encode_error
+    ; subject and key use the same byte length.
     add rax, 14
     add r13, rax
-    ; key: 1 + 4 + 4 + len + 1
-    mov eax, [r14 + 16]
+    add rax, 0
+    sub rax, 14
     add rax, 10
     add r13, rax
-    ; score + votes: 2 * (1 + 6 + 4)
-    add r13, 22
-    ; upvoter: 1 + 8 + 4 + len + 1
-    mov eax, [r14 + 48]
+    mov rax, [r14 + 48]
+    cmp rax, 0xffffffff
+    ja .encode_error
     add rax, 14
     add r13, rax
-    ; upvtime: 1 + 8 + 8
-    add r13, 17
-    ; downvoter: 1 + 10 + 4 + len + 1
-    mov eax, [r14 + 72]
+    mov rax, [r14 + 72]
+    cmp rax, 0xffffffff
+    ja .encode_error
     add rax, 16
     add r13, rax
-    ; downvtime: 1 + 10 + 8
-    add r13, 19
+    ; int32/int64 encoded size depends on the Go int range.
+    mov rax, [r14 + 24]
+    cmp rax, 0x7fffffff
+    jg .score_wide
+    cmp rax, -0x80000000
+    jl .score_wide
+    add r13, 11
+    jmp .score_done
+.score_wide:
+    add r13, 15
+.score_done:
+    mov rax, [r14 + 32]
+    test rax, rax
+    js .encode_error
+    cmp rax, 0x7fffffff
+    ja .votes_wide
+    add r13, 11
+    jmp .votes_done
+.votes_wide:
+    add r13, 15
+.votes_done:
+    ; date elements are 17 and 19 bytes.
+    add r13, 36
     cmp r13, r12
     ja .encode_error
     cmp r13, 0x7fffffff
@@ -118,9 +156,9 @@ karma_bson_encode:
     mov r13d, 4
     lea rdi, [rdi]
     WRITE_STRING "subject", 0, 8
-    WRITE_STRING "key", 16, 24
-    WRITE_INT32 "score", 24
-    WRITE_INT32 "votes", 32
+    WRITE_STRING "key", 16, 8
+    WRITE_INT "score", 24
+    WRITE_INT "votes", 32
     WRITE_STRING "upvoter", 40, 48
     WRITE_DATE "upvtime", 56
     WRITE_STRING "downvoter", 64, 72
