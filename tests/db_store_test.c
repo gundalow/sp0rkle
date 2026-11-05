@@ -24,6 +24,9 @@ extern long db_key_path_append(const unsigned char *, size_t, const unsigned cha
 extern int db_store_scan_open(void *, const void *, size_t, void **);
 extern int db_store_scan_next(void *, void *, size_t, size_t *, void *, size_t, size_t *);
 extern int db_store_scan_close(void *);
+extern int db_store_scan_tree_open(void *, const void *, size_t, void **);
+struct scan_tree_entry { void *path; size_t path_capacity; size_t *path_len; void *key; size_t key_capacity; size_t *key_len; void *value; size_t value_capacity; size_t *value_len; };
+extern int db_store_scan_tree_next(void *, struct scan_tree_entry *);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
