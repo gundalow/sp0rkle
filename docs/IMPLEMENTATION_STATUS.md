@@ -29,6 +29,13 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 - Ordered rewrite callback pipeline with alternating caller-owned buffers and failure propagation.
 
+### IRC PRIVMSG Context adapter
+
+- Added `bot_irc_privmsg_views` to validate a parsed user-originated PRIVMSG and expose sender nick, target, and body as pointer/length views into the original line.
+- The adapter rejects out-of-bounds slices, requires a nick-bearing prefix (`!` or `@`), and leaves whitespace/addressing policy to `bot_context_prepare_privmsg`.
+- Added C regression coverage and `docs/IRC_CONTEXT_ABI.md`; the Makefile builds and runs this test.
+- This is an extraction boundary, not yet a complete Context constructor or command-dispatch integration.
+
 ## Not implemented yet
 
 The items below remain required by SPEC.md; this milestone is not a complete
