@@ -31,7 +31,7 @@ $(BUILD_DIR)/%.o: src/%.asm
 	@mkdir -p $(dir $@)
 	$(NASM) -f elf64 -g -F dwarf -Wall -Werror -w-reloc-rel-dword -o $@ $<
 
-$(IRC_SERIALIZE_TEST): tests/irc_serialize_test.c $(BUILD_DIR)/irc/serialize.o $(BUILD_DIR)/irc/transport.o
+$(IRC_SERIALIZE_TEST): tests/irc_serialize_test.c $(BUILD_DIR)/irc/serialize.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
 
 $(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
