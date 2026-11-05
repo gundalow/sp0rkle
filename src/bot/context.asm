@@ -147,7 +147,7 @@ bot_context_prepare_privmsg:
     push r13
     push r14
     push r15
-    sub rsp, 72
+    sub rsp, 40
 
     mov r12, rdi                ; text
     mov r13, rsi                ; text length
@@ -155,19 +155,6 @@ bot_context_prepare_privmsg:
     mov r15, rcx                ; nick length
     mov rbx, r8                 ; target
     mov [rbp - 48], r9          ; target length
-    mov rax, [rbp + 16]
-    mov [rbp - 88], rax         ; out_start
-    mov rax, [rbp + 24]
-    mov [rbp - 96], rax         ; out_len
-    mov rax, [rbp + 32]
-    mov [rbp - 104], rax        ; out_addressed
-
-    cmp qword [rbp - 88], 0
-    je .context_invalid
-    cmp qword [rbp - 96], 0
-    je .context_invalid
-    cmp qword [rbp - 104], 0
-    je .context_invalid
 
     xor r10d, r10d              ; trimmed start
     mov r11, r13                ; trimmed end
@@ -289,46 +276,37 @@ bot_context_prepare_privmsg:
 .context_prefix_store:
     mov [rbp - 56], r10
     mov [rbp - 64], r11
-    mov edx, 1
-    jmp .context_store
+    mov r10d, 1
+    jmp .context_pack
 
 .context_unprefixed:
-    xor edx, edx
+    xor r10d, r10d
     ; The reference uses exact string equality for target == bot nick.
     mov r8, [rbp - 48]
     cmp r8, r15
-    jne .context_store
+    jne .context_pack
     test r15, r15
-    jz .context_store
+    jz .context_pack
     xor r9d, r9d
 .context_target_compare:
     cmp r9, r15
     jae .context_private
     mov r8b, [rbx + r9]
     cmp r8b, [r14 + r9]
-    jne .context_store
+    jne .context_pack
     inc r9
     jmp .context_target_compare
 .context_private:
-    mov edx, 1
+    mov r10d, 1
 
-.context_store:
-    mov rax, [rbp - 56]
-    mov r8, [rbp - 88]
-    mov [r8], rax
-    mov rax, [rbp - 64]
-    sub rax, [rbp - 56]
-    mov r8, [rbp - 96]
-    mov [r8], rax
-    mov r8, [rbp - 104]
-    mov [r8], rdx
-    xor eax, eax
-    jmp .context_return
-
-.context_invalid:
-    mov eax, -1
-.context_return:
-    add rsp, 72
+.context_pack:
+    mov rax, [rbp - 56]         ; first return register: start
+    mov rdx, [rbp - 64]
+    sub rdx, rax                ; low 32 bits: length
+    mov ecx, r10d
+    shl rcx, 32                 ; high 32 bits: addressed
+    or rdx, rcx                 ; second return register
+    add rsp, 40
     pop r15
     pop r14
     pop r13
