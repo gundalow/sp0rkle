@@ -18,6 +18,7 @@ struct decode_request {
     char *downvoter; uint64_t downvoter_capacity;
 };
 extern int karma_bson_decode(struct decode_request *);
+extern int bson_document_validate(const unsigned char *, size_t);
 
 static uint32_t u32(const unsigned char *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
@@ -50,6 +51,7 @@ int main(void) {
     size_t n=0;
     assert(karma_bson_encode(&r,doc,sizeof(doc),&n)==0);
     assert(n==u32(doc) && doc[n-1]==0);
+    assert(bson_document_validate(doc,n)==0);
     const unsigned char *p=field(doc,"subject",0x02);
     assert(p && u32(p)==8 && memcmp(p+4,"Sp0rKle",7)==0 && p[11]==0);
     p=field(doc,"key",0x02);
@@ -83,9 +85,14 @@ int main(void) {
     struct decode_request small=req; small.subject_capacity=2;
     assert(karma_bson_decode(&small)==-1);
     unsigned char damaged[256]; memcpy(damaged,doc,n); damaged[n-1]=1;
+    assert(bson_document_validate(damaged,n)==-1);
     req.doc=damaged;
     assert(karma_bson_decode(&req)==-1);
 
+    unsigned char nested_doc[18]={18,0,0,0,0x03,'n','e','s','t','e','d',0,5,0,0,0,0,0};
+    assert(bson_document_validate(nested_doc,sizeof(nested_doc))==0);
+    nested_doc[12]=4;
+    assert(bson_document_validate(nested_doc,sizeof(nested_doc))==-1);
     puts("Karma BSON tests: PASS");
     return 0;
 }
