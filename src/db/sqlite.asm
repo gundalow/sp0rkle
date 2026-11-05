@@ -55,6 +55,7 @@ db_store_open:
     test r13, r13
     jz .open_error
     mov qword [rsp], 0
+    mov qword [rsp + 8], 0
     mov rdi, r12
     lea rsi, [rsp]
     mov edx, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
@@ -75,6 +76,12 @@ db_store_open:
     xor eax, eax
     jmp .open_done
 .open_close_partial:
+    mov rax, [rsp + 8]
+    test rax, rax
+    jz .open_no_error_message
+    mov rdi, rax
+    call sqlite3_free
+.open_no_error_message:
     mov rbx, [rsp]
     test rbx, rbx
     jz .open_error
@@ -236,6 +243,10 @@ db_store_get:
     mov rax, [rbp + 24]
     mov [rsp + 16], rax
     mov qword [rsp + 24], 0
+    mov rax, [rsp + 16]
+    test rax, rax
+    jz .get_error
+    mov qword [rax], 0
     test r12, r12
     jz .get_error
     test r13, r13
