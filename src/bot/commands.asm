@@ -179,9 +179,9 @@ bot_command_normalize_args:
 
 
 ; int bot_command_dispatch(entries, count, text, text_len, addressed,
-;                          factoid_predicate, out_args, out_capacity,
+;                          factoid_addition, out_args, out_capacity,
 ;                          out_handler)
-; factoid_predicate(text, text_len) returns nonzero for a factoid addition.
+; factoid_addition is computed against the original IRC line by the caller.
 ; Returns 1 when dispatched, 0 when ignored/no matching command, -1 on
 ; output-buffer error. out_handler receives the opaque handler pointer.
 ; Output args are the matched suffix with ASCII whitespace normalized.
@@ -201,7 +201,7 @@ bot_command_dispatch:
     mov r14, rdx                ; original text
     mov r15, rcx                ; text length
     mov ebx, r8d                ; addressed
-    mov r10, r9                 ; factoid predicate
+    mov r10d, r9d               ; factoid-addition flag
     mov r11, [rbp + 16]         ; out_args
     mov rax, [rbp + 24]         ; out_capacity
     mov [rbp - 48], rax
@@ -218,12 +218,7 @@ bot_command_dispatch:
     jz .invalid
     mov qword [rax], 0
 
-    test r10, r10
-    jz .addressed
-    mov rdi, r14
-    mov rsi, r15
-    call r10
-    test eax, eax
+    test r10d, r10d
     jnz .not_dispatched
 
 .addressed:
