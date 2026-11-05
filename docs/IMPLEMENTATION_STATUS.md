@@ -33,6 +33,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 
 - Added a byte-span parser for `++` and `--` annotations, including reverse-order result semantics and one-level parenthesised multi-word subjects.
 - Added ASCII key normalisation and caller-owned karma record mutation for score, vote count, last upvoter/downvoter and Unix-millisecond timestamps.
+- Added schema-specific BSON encode/decode for Karma records, including Go-compatible string, int32/int64 and datetime representations.
+- Added SQLite Karma lookup/upsert callbacks and an integration test that applies multiple annotations through the persistent store. The remaining Karma work is Unicode subject parsing, IRC event/command registration and response compatibility.
 - Record updates reject signed-score and unsigned-vote overflow without changing the record.
 - C tests cover parser examples, record updates and overflow boundaries. Unicode letter/number classification, persistent collection operations, event wiring and command responses remain outstanding.
 - Added `karma_apply_annotations`, connecting parsed annotation spans to caller-provided lookup/put callbacks; it creates new records, applies score/vote metadata and persists each change synchronously.
@@ -44,7 +46,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - uint64 values are encoded as fixed-width eight-byte big-endian values; boolean values use 0xff and 0x00.
 - Added key-name validation rejecting the unit separator and capacity checks that leave output untouched on failure.
 - Added C regression tests for exact bytes, binary values, invalid names, and insufficient output capacity.
-- Added fixed-width 12-byte ObjectId encoding and signed Unix-millisecond timestamp encoding (including pre-epoch values). A durable SQLite BLOB store now supports transactions, upsert/get/delete, atomic per-path sequences, bucket creation/existence, recursive bucket deletion, and ordered scans within a bucket. It is not BoltDB-file compatible; recursive subtree scans, BSON records, keyed/indexed collection semantics, fsck, and compressed backups remain outstanding.
+- Added fixed-width 12-byte ObjectId encoding and signed Unix-millisecond timestamp encoding (including pre-epoch values). A durable SQLite BLOB store now supports transactions, upsert/get/delete, atomic per-path sequences, bucket creation/existence, recursive bucket deletion, and ordered scans within a bucket. Karma records now use a schema-specific BSON codec and persistent adapter. The backend is not BoltDB-file compatible; general BSON, recursive subtree scans, keyed/indexed collection semantics, fsck, and compressed backups remain outstanding.
 
 ### Poller lifecycle
 
