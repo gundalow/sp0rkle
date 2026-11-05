@@ -52,7 +52,7 @@ bot_irc_privmsg_views:
     cmp ecx, 7
     jb .invalid
     lea rsi, [r12 + rax]
-    mov rdi, privmsg_name
+    lea rdi, [rel privmsg_name]
     mov ecx, 7
 .compare_command:
     mov al, [rdi]
