@@ -28,9 +28,8 @@ main:
     mov r12, rsi
     cmp rdi, 1
     jle .default
-    lea rdi, [rel arg_version]
-    mov rsi, [r12 + 8]
-    xchg rdi, rsi
+    mov rdi, [r12 + 8]
+    lea rsi, [rel arg_version]
     call strcmp
     test eax, eax
     jz .version
