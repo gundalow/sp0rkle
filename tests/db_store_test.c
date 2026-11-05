@@ -72,6 +72,11 @@ int main(void) {
     assert(out_len == sizeof(value));
     assert(memcmp(out, value, sizeof(value)) == 0);
 
+    assert(db_store_put(db, path, sizeof(path), "empty", 5, NULL, 0) == 0);
+    assert(db_store_get(db, path, sizeof(path), "empty", 5, out, sizeof(out), &out_len) == 1);
+    assert(out_len == 0);
+    assert(db_store_get(db, path, sizeof(path), key, sizeof(key), out, 1, &out_len) == -1);
+
     int64_t sequence = 0;
     assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 1);
     assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 2);
