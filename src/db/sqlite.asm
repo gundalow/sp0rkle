@@ -10,6 +10,9 @@ global db_store_get
 global db_store_delete
 global db_store_sequence_next
 global db_store_sequence_set
+global db_store_bucket_ensure
+global db_store_bucket_exists
+global db_store_bucket_delete
 
 extern sqlite3_open_v2
 extern sqlite3_close
@@ -35,7 +38,9 @@ extern sqlite3_bind_int64
 section .rodata
 schema_sql: db "PRAGMA journal_mode=WAL;"
             db "CREATE TABLE IF NOT EXISTS kv (path BLOB NOT NULL, key BLOB NOT NULL, value BLOB NOT NULL, PRIMARY KEY(path,key)) WITHOUT ROWID;"
-            db "CREATE TABLE IF NOT EXISTS sequences (path BLOB PRIMARY KEY NOT NULL, value INTEGER NOT NULL) WITHOUT ROWID;", 0
+            db "CREATE TABLE IF NOT EXISTS sequences (path BLOB PRIMARY KEY NOT NULL, value INTEGER NOT NULL) WITHOUT ROWID;"
+            db "CREATE TABLE IF NOT EXISTS buckets (path BLOB PRIMARY KEY NOT NULL) WITHOUT ROWID;"
+            db "INSERT OR IGNORE INTO buckets(path) VALUES(x'');", 0
 begin_sql: db "BEGIN IMMEDIATE", 0
 commit_sql: db "COMMIT", 0
 rollback_sql: db "ROLLBACK", 0
@@ -44,6 +49,14 @@ get_sql: db "SELECT value FROM kv WHERE path=?1 AND key=?2", 0
 delete_sql: db "DELETE FROM kv WHERE path=?1 AND key=?2", 0
 seq_next_sql: db "INSERT INTO sequences(path,value) VALUES(?1,1) ON CONFLICT(path) DO UPDATE SET value=value+1 RETURNING value", 0
 seq_set_sql: db "INSERT INTO sequences(path,value) VALUES(?1,?2) ON CONFLICT(path) DO UPDATE SET value=excluded.value", 0
+bucket_ensure_sql: db "INSERT OR IGNORE INTO buckets(path) VALUES(?1)", 0
+bucket_exists_sql: db "SELECT 1 FROM buckets WHERE path=?1", 0
+bucket_delete_kv_sql: db "DELETE FROM kv WHERE substr(path,1,?1)=?2", 0
+bucket_delete_seq_sql: db "DELETE FROM sequences WHERE substr(path,1,?1)=?2", 0
+bucket_delete_bucket_sql: db "DELETE FROM buckets WHERE substr(path,1,?1)=?2", 0
+savepoint_sql: db "SAVEPOINT bucket_delete", 0
+rollback_savepoint_sql: db "ROLLBACK TO bucket_delete", 0
+release_sql: db "RELEASE bucket_delete", 0
 
 section .text
 ; int db_store_open(path, sqlite_handle_out)
@@ -529,6 +542,247 @@ db_store_sequence_set:
     mov eax, -1
 .seq_set_done:
     add rsp, 24
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_bucket_ensure(handle,path,path_len)
+; Creates one exact bucket path. Parent paths are created by the caller.
+db_store_bucket_ensure:
+    push rbx
+    push r12
+    push r13
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov rbx, rdx
+    mov qword [rsp], 0
+    test r12, r12
+    jz .bucket_ensure_error
+    test r13, r13
+    jz .bucket_ensure_error
+    mov rdi, r12
+    lea rsi, [rel bucket_ensure_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .bucket_ensure_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r13
+    mov rcx, rbx
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .bucket_ensure_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_DONE
+    jne .bucket_ensure_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .bucket_ensure_error
+    xor eax, eax
+    jmp .bucket_ensure_done
+.bucket_ensure_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.bucket_ensure_error:
+    mov eax, -1
+.bucket_ensure_done:
+    add rsp, 16
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_bucket_exists(handle,path,path_len)
+; Returns 1 if present, 0 if absent, -1 on error.
+db_store_bucket_exists:
+    push rbx
+    push r12
+    push r13
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov rbx, rdx
+    mov qword [rsp], 0
+    test r12, r12
+    jz .bucket_exists_error
+    test r13, r13
+    jz .bucket_exists_error
+    mov rdi, r12
+    lea rsi, [rel bucket_exists_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .bucket_exists_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r13
+    mov rcx, rbx
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .bucket_exists_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_ROW
+    je .bucket_exists_found
+    cmp eax, SQLITE_DONE
+    jne .bucket_exists_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .bucket_exists_error
+    xor eax, eax
+    jmp .bucket_exists_done
+.bucket_exists_found:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .bucket_exists_error
+    mov eax, 1
+    jmp .bucket_exists_done
+.bucket_exists_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.bucket_exists_error:
+    mov eax, -1
+.bucket_exists_done:
+    add rsp, 16
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; Internal: int db_store_delete_prefix(handle, sql, path, path_len)
+db_store_delete_prefix:
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 8
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov rbx, rcx
+    mov qword [rsp], 0
+    mov rdi, r12
+    mov rsi, r13
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .delete_prefix_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, rbx
+    call sqlite3_bind_int64
+    test eax, eax
+    jnz .delete_prefix_finalize_error
+    mov rdi, [rsp]
+    mov esi, 2
+    mov rdx, r14
+    mov rcx, rbx
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .delete_prefix_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_DONE
+    jne .delete_prefix_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .delete_prefix_error
+    xor eax, eax
+    jmp .delete_prefix_done
+.delete_prefix_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.delete_prefix_error:
+    mov eax, -1
+.delete_prefix_done:
+    add rsp, 8
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_bucket_delete(handle,path,path_len)
+; Recursively removes this bucket and descendants, including stored values
+; and sequences. The root path is protected. Uses a savepoint so it can nest
+; inside a caller transaction.
+db_store_bucket_delete:
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 8
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    test r12, r12
+    jz .bucket_delete_error
+    test r13, r13
+    jz .bucket_delete_error
+    test r14, r14
+    jz .bucket_delete_error
+    mov rdi, r12
+    lea rsi, [rel savepoint_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .bucket_delete_error
+    mov rdi, r12
+    lea rsi, [rel bucket_delete_kv_sql]
+    mov rdx, r13
+    mov rcx, r14
+    call db_store_delete_prefix
+    test eax, eax
+    jnz .bucket_delete_rollback
+    mov rdi, r12
+    lea rsi, [rel bucket_delete_seq_sql]
+    mov rdx, r13
+    mov rcx, r14
+    call db_store_delete_prefix
+    test eax, eax
+    jnz .bucket_delete_rollback
+    mov rdi, r12
+    lea rsi, [rel bucket_delete_bucket_sql]
+    mov rdx, r13
+    mov rcx, r14
+    call db_store_delete_prefix
+    test eax, eax
+    jnz .bucket_delete_rollback
+    mov rdi, r12
+    lea rsi, [rel release_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .bucket_delete_rollback
+    xor eax, eax
+    jmp .bucket_delete_done
+.bucket_delete_rollback:
+    mov rdi, r12
+    lea rsi, [rel rollback_savepoint_sql]
+    call db_store_exec
+    mov rdi, r12
+    lea rsi, [rel release_sql]
+    call db_store_exec
+.bucket_delete_error:
+    mov eax, -1
+.bucket_delete_done:
+    add rsp, 8
     pop r14
     pop r13
     pop r12
