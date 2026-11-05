@@ -1,0 +1,41 @@
+#include <assert.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdint.h>
+
+struct bot_command_entry {
+    const char *prefix;
+    uint64_t prefix_len;
+    void *handler;
+    const char *help;
+};
+
+extern const struct bot_command_entry *bot_command_match(
+    const struct bot_command_entry *, uint32_t, const char *, size_t, size_t *);
+
+int main(void) {
+    struct bot_command_entry entries[] = {
+        {"help", 4, (void *)1, "help text"},
+        {"remind", 6, (void *)2, "remind help"},
+        {"remind list", 11, (void *)3, "list help"},
+        {"quote", 5, (void *)4, "quote help"},
+        {"quote #", 7, (void *)5, "quote number help"},
+    };
+    size_t n = 999;
+    const struct bot_command_entry *e;
+
+    e = bot_command_match(entries, 5, "REMIND me", 9, &n);
+    assert(e == &entries[1] && n == 6);
+    e = bot_command_match(entries, 5, "Remind List 1", 13, &n);
+    assert(e == &entries[2] && n == 11);
+    e = bot_command_match(entries, 5, "QUOTE #12", 9, &n);
+    assert(e == &entries[4] && n == 7);
+    e = bot_command_match(entries, 5, "help me", 7, &n);
+    assert(e == &entries[0] && n == 4);
+    e = bot_command_match(entries, 5, "unknown", 7, &n);
+    assert(e == NULL && n == 0);
+    e = bot_command_match(entries, 5, "rem", 3, &n);
+    assert(e == NULL && n == 0);
+    puts("command tests: PASS");
+    return 0;
+}
