@@ -35,6 +35,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Added ASCII key normalisation and caller-owned karma record mutation for score, vote count, last upvoter/downvoter and Unix-millisecond timestamps.
 - Record updates reject signed-score and unsigned-vote overflow without changing the record.
 - C tests cover parser examples, record updates and overflow boundaries. Unicode letter/number classification, persistent collection operations, event wiring and command responses remain outstanding.
+- Added `karma_apply_annotations`, connecting parsed annotation spans to caller-provided lookup/put callbacks; it creates new records, applies score/vote metadata and persists each change synchronously.
+- Added an in-memory callback integration test proving multiple annotations for one subject update the same record. Persistence is intentionally delegated to the future storage layer.
 
 ### Database key primitives
 
