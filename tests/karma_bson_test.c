@@ -41,8 +41,9 @@ int main(void) {
     unsigned char doc[256]; memset(doc,0xa5,sizeof(doc));
     size_t n=0;
     assert(karma_bson_encode(&r,doc,sizeof(doc),&n)==0);
+    fprintf(stderr, "encoded n=%zu doclen=%u\\n", n, u32(doc)); fflush(stderr);
     assert(n==u32(doc) && doc[n-1]==0);
-    const unsigned char *p=field(doc,"subject",0x02);
+    const unsigned char *p=field(doc,"subject",0x02); fprintf(stderr, "subject field %p\\n", (void *)p); fflush(stderr);
     assert(p && u32(p)==8 && memcmp(p+4,"Sp0rKle",7)==0 && p[11]==0);
     p=field(doc,"key",0x02);
     assert(p && u32(p)==8 && memcmp(p+4,"sp0rkle",7)==0);
