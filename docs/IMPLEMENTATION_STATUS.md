@@ -29,6 +29,14 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 - Ordered rewrite callback pipeline with alternating caller-owned buffers and failure propagation.
 
+### Poller lifecycle
+
+- Added caller-owned poller registry/state and deterministic lifecycle operations.
+- Pollers start once when the first IRC connection becomes active, stop once when the last connection disconnects, and can be registered while connected (starting immediately).
+- Added ordered synchronous poll dispatch over the caller-supplied Context array; the application scheduler remains responsible for tick intervals and thread execution.
+- Added C regression tests for first/last connection transitions, late registration, poll ordering/count, and inactive poll suppression.
+- This establishes lifecycle semantics but does not yet implement a timer scheduler, background goroutine equivalent, or full server-set reconnect manager.
+
 ### IRC PRIVMSG command pipeline
 
 - Added `bot_irc_privmsg_command_process`, which composes parsed user PRIVMSG extraction, Context preparation, raw-body factoid detection, nick filtering, addressed gating, longest-prefix command matching and argument normalization.
