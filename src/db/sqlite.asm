@@ -1391,6 +1391,50 @@ db_store_indexed_update:
     test rbx, rbx
     jz .indexed_error
 .indexed_new_ok:
+    ; Reject malformed descriptors before opening the savepoint or mutating data.
+    cmp qword [r13], 0
+    je .indexed_error
+    cmp qword [r13 + 16], 0
+    je .indexed_error
+    cmp qword [r13 + 40], 0
+    je .indexed_value_ptr_ok
+    cmp qword [r13 + 32], 0
+    je .indexed_error
+.indexed_value_ptr_ok:
+    mov qword [rsp + 8], 0
+.indexed_validate_old:
+    mov rax, [rsp + 8]
+    cmp rax, r15
+    jae .indexed_validate_new_start
+    imul rax, 48
+    lea rdx, [r14 + rax]
+    cmp qword [rdx], 0
+    je .indexed_error
+    cmp qword [rdx + 16], 0
+    je .indexed_error
+    inc qword [rsp + 8]
+    jmp .indexed_validate_old
+.indexed_validate_new_start:
+    mov qword [rsp + 8], 0
+.indexed_validate_new:
+    mov rax, [rsp + 8]
+    cmp rax, rbp
+    jae .indexed_savepoint
+    imul rax, 48
+    lea rdx, [rbx + rax]
+    cmp qword [rdx], 0
+    je .indexed_error
+    cmp qword [rdx + 16], 0
+    je .indexed_error
+    cmp qword [rdx + 40], 0
+    je .indexed_new_value_ptr_ok
+    cmp qword [rdx + 32], 0
+    je .indexed_error
+.indexed_new_value_ptr_ok:
+    inc qword [rsp + 8]
+    jmp .indexed_validate_new
+
+.indexed_savepoint:
     mov rdi, r12
     lea rsi, [rel indexed_savepoint_sql]
     call db_store_exec
