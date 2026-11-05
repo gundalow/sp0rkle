@@ -14,12 +14,8 @@ struct bot_command_entry {
 
 extern int bot_command_dispatch(const struct bot_command_entry *, uint32_t,
                                 const char *, size_t, int,
-                                int (*)(const char *, size_t),
+                                int,
                                 char *, size_t, void **);
-
-static int is_factoid_addition(const char *text, size_t len) {
-    return len >= 5 && memcmp(text, "learn", 5) == 0;
-}
 
 extern ssize_t bot_command_normalize_args(const char *, size_t, char *, size_t);
 
@@ -62,7 +58,7 @@ int main(void) {
     assert(out_len == -1 && normalized[0] == 0);
     void *handler = NULL;
     int dispatched = bot_command_dispatch(entries, 5, "Remind   List  1", strlen("Remind   List  1"),
-                                           1, NULL, normalized,
+                                           1, 0, normalized,
                                            sizeof(normalized), &handler);
     assert(dispatched == 1 && handler == (void *)3);
     assert(strcmp(normalized, "1") == 0);
@@ -71,7 +67,7 @@ int main(void) {
                                        normalized, sizeof(normalized), &handler);
     assert(dispatched == 0 && handler == NULL);
     dispatched = bot_command_dispatch(entries, 5, "learn something", 15, 1,
-                                       is_factoid_addition, normalized,
+                                       1, normalized,
                                        sizeof(normalized), &handler);
     assert(dispatched == 0 && handler == NULL);
     dispatched = bot_command_dispatch(entries, 5, "not-a-command", 13, 1,
