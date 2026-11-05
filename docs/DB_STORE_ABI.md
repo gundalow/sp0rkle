@@ -52,6 +52,8 @@ The caller supplies the collection root path, encoded parent path, and final key
 
 The operation deletes the caller-supplied old index keys, upserts the canonical BSON value, then writes the new index pointers. Any failure rolls back the entire mutation, including when nested inside an outer transaction. The caller must decode the old record and derive the complete old/new index sets; stale-index discovery and fsck repair remain higher-level responsibilities.
 
+`db_store_indexed_get(handle, request)` resolves a nested index key to its stored ObjectId pointer, then loads the canonical BSON value from the values path. A direct `_id` pointer at the index root bypasses index resolution, matching the reference collection's pointer fast path. Its 104-byte request describes values path, indexes root/path, index key, pointer scratch and BSON output buffers.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
