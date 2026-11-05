@@ -106,7 +106,8 @@ karma_bson_encode:
     mov r13d, 5
     ; String lengths are uint32 in BSON; reject unrepresentable fields.
     mov rax, [r14 + 8]
-    cmp rax, 0xffffffff
+    mov edx, -1
+    cmp rax, rdx
     ja .encode_error
     ; subject and key use the same byte length.
     add rax, 14
@@ -116,12 +117,14 @@ karma_bson_encode:
     add rax, 10
     add r13, rax
     mov rax, [r14 + 48]
-    cmp rax, 0xffffffff
+    mov edx, -1
+    cmp rax, rdx
     ja .encode_error
     add rax, 14
     add r13, rax
     mov rax, [r14 + 72]
-    cmp rax, 0xffffffff
+    mov edx, -1
+    cmp rax, rdx
     ja .encode_error
     add rax, 16
     add r13, rax
