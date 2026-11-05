@@ -11,3 +11,5 @@ Each encoder returns the number of bytes written or -1. Capacity is checked befo
 
 - `db_key_encode_id(value12, out, capacity)`: writes the fixed ObjectId key element `_id || 0x1f || value12`, where the identifier is exactly 12 raw bytes; the total encoded length is 16.
 - `db_key_encode_timestamp_ms(name, name_len, unix_ms, out, capacity)`: encodes a signed Unix-millisecond value using its two's-complement 64-bit bit pattern in big-endian order. This matches the reference timestamp key's conversion to `uint64(time.UnixMilli())`, including pre-epoch values.
+
+- `db_key_path_append(path, path_len, element, element_len, out, capacity)`: appends an eight-byte big-endian element length followed by the raw element bytes. The result is a prefix-safe, unambiguous hierarchical bucket path, including when elements contain NUL or separator bytes. Returns the resulting path length or -1; capacity is checked before output is modified.
