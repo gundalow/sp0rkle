@@ -3,6 +3,7 @@ default rel
 global db_store_keyed_delete
 global db_store_keyed_scan_open
 global db_store_indexed_get
+global db_store_indexed_scan_next
 
 extern db_key_path_append
 extern db_store_delete
@@ -249,4 +250,135 @@ db_store_indexed_get:
     pop r13
     pop r12
     pop rbx
+    ret
+
+; Indexed scan request (80 bytes):
+; +0 SQLite statement, +8 scan-tree descriptor,
+; +16 canonical values path, +24 path_len,
+; +32 BSON output, +40 capacity, +48 output length pointer,
+; +56 seen ObjectId array (16-byte entries, optional),
+; +64 seen count pointer (optional), +72 seen capacity in entries.
+; int db_store_indexed_scan_next(handle, request)
+; Returns one unique canonical BSON record, skips duplicate/stale pointers.
+db_store_indexed_scan_next:
+    cld
+    push rbp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 40
+    mov r12, rdi
+    mov r13, rsi
+    test r12, r12
+    jz .idxscan_error
+    test r13, r13
+    jz .idxscan_error
+    mov r14, [r13 + 8]
+    test r14, r14
+    jz .idxscan_error
+    mov r15, [r13 + 56]
+    mov rbx, [r13 + 64]
+    mov rbp, [r13 + 72]
+    cmp qword [r13 + 48], 0
+    je .idxscan_error
+.idxscan_loop:
+    mov rdi, [r13]
+    mov rsi, r14
+    call db_store_scan_tree_next
+    cmp eax, 1
+    je .idxscan_row
+    test eax, eax
+    jz .idxscan_end
+    jmp .idxscan_error
+.idxscan_row:
+    mov rax, [r14 + 64]
+    test rax, rax
+    jz .idxscan_error
+    mov rcx, [rax]
+    cmp rcx, 16
+    jne .idxscan_error
+    mov r10, [r14 + 48]         ; ObjectId pointer bytes from index value
+    test r10, r10
+    jz .idxscan_error
+
+    ; Optional deduplication by 12-byte ObjectId pointer.
+    test rbx, rbx
+    jz .idxscan_fetch
+    test r15, r15
+    jz .idxscan_error
+    mov r11, [rbx]
+    cmp r11, rbp
+    ja .idxscan_error
+    xor r9d, r9d
+.idxscan_seen_loop:
+    cmp r9, r11
+    jae .idxscan_not_seen
+    mov rax, r9
+    shl rax, 4
+    lea rdx, [r15 + rax]
+    xor ecx, ecx
+.idxscan_compare:
+    cmp ecx, 16
+    jae .idxscan_duplicate
+    mov al, [rdx + rcx]
+    cmp al, [r10 + rcx]
+    jne .idxscan_next_seen
+    inc ecx
+    jmp .idxscan_compare
+.idxscan_next_seen:
+    inc r9
+    jmp .idxscan_seen_loop
+.idxscan_duplicate:
+    jmp .idxscan_loop
+.idxscan_not_seen:
+    cmp r11, rbp
+    jae .idxscan_error
+
+.idxscan_fetch:
+    ; Resolve pointer into the canonical values bucket.
+    mov rdi, r12
+    mov rsi, [r13 + 16]
+    mov rdx, [r13 + 24]
+    mov rcx, r10
+    mov r8d, 16
+    mov r9, [r13 + 32]
+    mov rax, [r13 + 40]
+    mov [rsp], rax
+    mov rax, [r13 + 48]
+    mov [rsp + 8], rax
+    call db_store_get
+    cmp eax, 1
+    je .idxscan_found
+    test eax, eax
+    jz .idxscan_loop             ; stale index pointer; continue scanning
+    jmp .idxscan_error
+
+.idxscan_found:
+    test rbx, rbx
+    jz .idxscan_return_row
+    mov rax, [rbx]
+    shl rax, 4
+    lea rdi, [r15 + rax]
+    mov rsi, r10
+    mov ecx, 16
+    rep movsb
+    inc qword [rbx]
+.idxscan_return_row:
+    mov eax, 1
+    jmp .idxscan_done
+.idxscan_end:
+    xor eax, eax
+    jmp .idxscan_done
+.idxscan_error:
+    mov eax, -1
+.idxscan_done:
+    add rsp, 40
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
     ret
