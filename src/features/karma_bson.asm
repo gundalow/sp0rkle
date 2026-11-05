@@ -6,21 +6,21 @@ global karma_bson_encode
 
 %macro WRITE_STRING 3
     mov byte [rdi], 0x02
-    inc r13
+    inc rdi
     lea rsi, [rel %%name]
     mov ecx, %%namelen
     rep movsb
     mov byte [rdi], 0
-    inc r13
+    inc rdi
     mov eax, [r14 + %3]
     inc eax
     mov [rdi], eax
-    add r13, 4
+    add rdi, 4
     mov rsi, [r14 + %2]
-    mov ecx, [r14 + %3]
+    mov rcx, [r14 + %3]
     rep movsb
     mov byte [rdi], 0
-    inc r13
+    inc rdi
     jmp %%done
 %%name: db %1
 %%namelen equ $ - %%name
@@ -62,19 +62,19 @@ global karma_bson_encode
 
 %macro WRITE_DATE 2
     mov byte [rdi], 0x09
-    inc r13
+    inc rdi
     lea rsi, [rel %%name]
     mov ecx, %%namelen
     rep movsb
     mov byte [rdi], 0
-    inc r13
+    inc rdi
     mov rax, [r14 + %2]
     test rax, rax
     jnz %%time_ready
     mov rax, -62135596800000
 %%time_ready:
     mov [rdi], rax
-    add r13, 8
+    add rdi, 8
     jmp %%done
 %%name: db %1
 %%namelen equ $ - %%name
@@ -153,8 +153,7 @@ karma_bson_encode:
     ja .encode_error
 
     mov dword [rbx], 0
-    mov r13d, 4
-    lea rdi, [rdi]
+    lea rdi, [rbx + 4]
     WRITE_STRING "subject", 0, 8
     WRITE_STRING "key", 16, 8
     WRITE_INT "score", 24
@@ -164,9 +163,10 @@ karma_bson_encode:
     WRITE_STRING "downvoter", 64, 72
     WRITE_DATE "downvtime", 80
     mov byte [rdi], 0
-    inc r13
-    mov eax, r13d
-    mov [rbx], eax
+    inc rdi
+    mov r13, rdi
+    sub r13, rbx
+    mov [rbx], r13d
     mov [r15], r13
     xor eax, eax
     jmp .encode_done
