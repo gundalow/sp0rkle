@@ -1,7 +1,7 @@
 NASM ?= nasm
 CC ?= cc
 BUILD_DIR := build
-SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/db/sqlite.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_bson.asm src/features/karma_store.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
+SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/db/sqlite.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_bson.asm src/features/karma_store.asm src/features/karma_event.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
 OBJECTS := $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/sp0rkle
 TRANSPORT_TEST := $(BUILD_DIR)/transport_test
@@ -19,6 +19,7 @@ KARMA_TEST := $(BUILD_DIR)/karma_test
 KARMA_RECORD_TEST := $(BUILD_DIR)/karma_record_test
 KARMA_BSON_TEST := $(BUILD_DIR)/karma_bson_test
 KARMA_STORE_TEST := $(BUILD_DIR)/karma_store_test
+KARMA_EVENT_TEST := $(BUILD_DIR)/karma_event_test
 KARMA_APPLY_TEST := $(BUILD_DIR)/karma_apply_test
 EVENT_TEST := $(BUILD_DIR)/event_test
 IRC_SERIALIZE_TEST := $(BUILD_DIR)/irc_serialize_test
@@ -61,6 +62,9 @@ $(KARMA_BSON_TEST): tests/karma_bson_test.c $(BUILD_DIR)/features/karma_bson.o
 $(KARMA_STORE_TEST): tests/karma_store_test.c $(BUILD_DIR)/features/karma_store.o $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o
 	$(CC) -no-pie -o $@ $^ -lsqlite3
 
+$(KARMA_EVENT_TEST): tests/karma_event_test.c $(BUILD_DIR)/features/karma_event.o $(BUILD_DIR)/features/karma_store.o $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/irc/protocol.o
+	$(CC) -no-pie -o $@ $^ -lsqlite3
+
 $(KARMA_APPLY_TEST): tests/karma_apply_test.c $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o
 	$(CC) -no-pie -o $@ $^
 
@@ -88,7 +92,7 @@ $(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o $(B
 $(DB_STORE_TEST): tests/db_store_test.c $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/db/key.o
 	$(CC) -no-pie -o $@ $^ -lsqlite3
 
-test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_BSON_TEST) $(KARMA_STORE_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
+test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_BSON_TEST) $(KARMA_STORE_TEST) $(KARMA_EVENT_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
 	./$(TARGET) --self-test
 	./$(IRC_CONTEXT_TEST)
 	./$(IRC_COMMAND_TEST)
@@ -99,6 +103,7 @@ test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLE
 	./$(KARMA_RECORD_TEST)
 	./$(KARMA_BSON_TEST)
 	./$(KARMA_STORE_TEST)
+	./$(KARMA_EVENT_TEST)
 	./$(KARMA_APPLY_TEST)
 	./$(IRC_SERIALIZE_TEST)
 	./$(EVENT_TEST)
