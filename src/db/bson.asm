@@ -138,8 +138,6 @@ bson_validate_inner:
     js .invalid
     cmp eax, 1
     jb .invalid
-    lea rax, [r14 + 4]
-    add rax, rax                 ; discard: overflow check below uses length
     mov eax, [r14]
     lea rdx, [r14 + 4]
     add rdx, rax
@@ -167,7 +165,8 @@ bson_validate_inner:
     mov eax, [r14]
     cmp eax, 5
     jb .invalid
-    lea rdx, [r14 + rax]
+    mov rdx, r14
+    add rdx, rax
     jc .invalid
     cmp rdx, r15
     ja .invalid
@@ -225,7 +224,8 @@ bson_validate_inner:
     mov eax, [r14]
     cmp eax, 14
     jb .invalid
-    lea rdx, [r14 + rax]
+    mov rdx, r14
+    add rdx, rax
     jc .invalid
     cmp rdx, r15
     ja .invalid
@@ -240,8 +240,16 @@ bson_validate_inner:
     ja .invalid
     cmp byte [r8 - 1], 0
     jne .invalid
-    mov rdi, r8                 ; embedded scope document
-    mov esi, [r8]
+    mov eax, [r8]               ; embedded scope document length
+    cmp eax, 5
+    jb .invalid
+    mov r9, r8
+    add r9, rax
+    jc .invalid
+    cmp r9, [rsp]
+    jne .invalid
+    mov rdi, r8
+    mov esi, eax
     lea rdx, [rbp + 1]
     call bson_validate_inner
     test eax, eax
