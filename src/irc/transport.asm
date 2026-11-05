@@ -374,7 +374,7 @@ irc_send_join:
     mov rbp, rsp
     push rbx
     push r12
-    sub rsp, 520
+    sub rsp, 528
 
     mov r12d, edi
     mov rbx, rsi
@@ -396,7 +396,7 @@ irc_send_join:
 .join_error:
     mov eax, -1
 .join_return:
-    add rsp, 520
+    add rsp, 528
     pop r12
     pop rbx
     pop rbp
@@ -424,6 +424,7 @@ irc_session_wait_welcome:
     push r13
     push r14
     push r15
+    sub rsp, 8
 
     mov r12d, edi
     mov r13, rsi
@@ -464,6 +465,7 @@ irc_session_wait_welcome:
 .nick_in_use:
     mov eax, -2
 .welcome_return:
+    add rsp, 8
     pop r15
     pop r14
     pop r13
