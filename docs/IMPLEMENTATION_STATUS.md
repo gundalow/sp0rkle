@@ -10,7 +10,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Shared ASCII case-insensitive comparison, bounded comparison, and bounded string length.
 - Explicit-length byte copy and equality primitives.
 - IRC line terminator length primitive (CR, LF, or NUL).
-- Explicit-length IRC message parser for tags, prefixes, commands, middle parameters and trailing parameters, with a 15-parameter limit.
+- Explicit-length IRC message parser for tags, prefixes, commands, middle parameters and trailing parameters, with a 15-parameter limit.\n- POSIX TCP transport primitives for address resolution/connect, complete-buffer send and bounded CRLF line receive.
 - Minimal logging entry points and a shell smoke-test target.
 - Explicit ABI and string ownership conventions in the repository README.
 
