@@ -196,18 +196,16 @@ db_store_indexed_get:
 
 .idxget_resolve:
     ; Fetch the pointer stored at indexes_path/index_path/index_key.
-    cmp qword [r13 + 16], 0
-    je .idxget_error
     cmp qword [r13 + 32], 0
     je .idxget_error
     cmp qword [r13 + 64], 0
     je .idxget_error
     mov qword [rsp + 16], 0
     mov rdi, r12
-    mov rsi, [r13 + 16]
-    mov rdx, [r13 + 24]
-    mov rcx, [r13 + 32]
-    mov r8, [r13 + 40]
+    mov rsi, [r13 + 32]
+    mov rdx, [r13 + 40]
+    mov rcx, [r13 + 48]
+    mov r8, [r13 + 56]
     mov r9, r14
     mov rax, [r13 + 72]
     mov [rsp], rax
