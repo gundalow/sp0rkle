@@ -21,3 +21,29 @@ structure offsets. After extraction, pass the text and target views to
 `bot_context_prepare_privmsg`; pass the target and sender views to
 `bot_context_resolve_target` to obtain the reply destination. This keeps
 IRC framing/parsing separate from Context policy and output.
+
+
+## Prepared Context adapter
+
+`bot_irc_privmsg_context(line, line_len, parsed_message, botnick,
+botnick_len, out)` composes extraction, `bot_context_prepare_privmsg`, and
+`bot_context_resolve_target` into one call.
+
+Its 72-byte output structure is:
+
+- offset 0: sender nick pointer; offset 8: nick length
+- offset 16: original IRC target pointer; offset 24: target length
+- offset 32: prepared body pointer; offset 40: body length
+- offset 48: reply destination pointer; offset 56: reply destination length
+- offset 64: addressed flag (32-bit; remaining bytes reserved)
+
+The prepared body has outer ASCII whitespace removed and an optional
+case-insensitive `botnick` address prefix removed. The addressed flag is true
+for a recognized address prefix or an exact private-message target match.
+Channel targets (`#`, `&`, `+`, `!`) remain the reply destination;
+private-message targets resolve to the sender nick.
+
+All views still reference the caller-owned IRC line. The caller must keep that
+line alive while using the Context. The bot nick must be a valid pointer for
+its supplied length. Return values match the lower-level extractor: 1 for a
+user PRIVMSG, 0 for a non-context event, and -1 for malformed input.
