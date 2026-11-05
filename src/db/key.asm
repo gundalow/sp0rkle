@@ -36,6 +36,9 @@ db_key_encode_string:
     push r13
     push r14
     push r15
+    push rax
+    sub rsp, 8
+    mov [rsp], r9
     mov r12, rdi
     mov r13, rsi
     mov r14, rdx
@@ -53,7 +56,7 @@ db_key_encode_string:
     jc .str_error
     add rax, 1
     jc .str_error
-    cmp rax, r9
+    cmp rax, [rsp]
     ja .str_error
     mov rdi, r12
     mov rsi, r13
@@ -86,6 +89,8 @@ db_key_encode_string:
 .str_error:
     mov rax, -1
 .str_return:
+    add rsp, 8
+    pop rax
     pop r15
     pop r14
     pop r13
@@ -100,16 +105,18 @@ db_key_encode_u64:
     push r12
     push r13
     push r14
+    push r15
     mov r12, rdi
     mov r13, rsi
     mov r14, rdx
     mov rbx, rcx
+    mov r15, r8
     test r12, r12
     jz .u64_error
     test rbx, rbx
     jz .u64_error
     lea rax, [r13 + 9]
-    cmp rax, r8
+    cmp rax, r15
     ja .u64_error
     mov rdi, r12
     mov rsi, r13
@@ -126,34 +133,27 @@ db_key_encode_u64:
     jmp .u64_name
 .u64_sep:
     mov byte [rbx + rcx], USEP
-    inc rcx
-    mov rdx, 56
-.u64_bytes:
-    mov rax, r14
-    mov cl, dl
-    shr rax, cl
-    ; byte index is (56-shift)/8
-    mov cl, dl
-    shr cl, 3
-    mov cl, 7
-    ; store via explicit descending index counter in r9
-    jmp .u64_store
-.u64_store:
-    mov r9d, 7
+    lea r10, [r13 + 1]
+    xor r9d, r9d
 .u64_store_loop:
+    cmp r9d, 8
+    jae .u64_done
+    mov eax, 7
+    sub eax, r9d
+    shl eax, 3
+    mov ecx, eax
     mov rax, r14
-    mov rcx, r9
-    shl rcx, 3
     shr rax, cl
-    mov [rbx + r13 + 1 + (7 - r9)], al
-    dec r9d
-    jns .u64_store_loop
-    mov eax, 0
+    mov [rbx + r10 + r9], al
+    inc r9d
+    jmp .u64_store_loop
+.u64_done:
     lea rax, [r13 + 9]
     jmp .u64_return
 .u64_error:
     mov rax, -1
 .u64_return:
+    pop r15
     pop r14
     pop r13
     pop r12
@@ -166,15 +166,18 @@ db_key_encode_bool:
     push rbx
     push r12
     push r13
+    push r14
     mov r12, rdi
     mov r13, rsi
+    mov r14d, edx
     mov rbx, rcx
+    mov r15, r8
     test r12, r12
     jz .bool_error
     test rbx, rbx
     jz .bool_error
     lea rax, [r13 + 2]
-    cmp rax, r8
+    cmp rax, r15
     ja .bool_error
     mov rdi, r12
     mov rsi, r13
@@ -192,7 +195,7 @@ db_key_encode_bool:
 .bool_sep:
     mov byte [rbx + rcx], USEP
     inc rcx
-    test edx, edx
+    test r14d, r14d
     setne al
     neg al
     mov [rbx + rcx], al
@@ -201,6 +204,7 @@ db_key_encode_bool:
 .bool_error:
     mov rax, -1
 .bool_return:
+    pop r14
     pop r13
     pop r12
     pop rbx
