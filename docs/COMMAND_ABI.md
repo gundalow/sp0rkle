@@ -110,3 +110,32 @@ may further limit the result count. A zero capacity returns zero without
 requiring an output pointer; a nonzero capacity with a null output pointer
 returns -1. The implementation uses ASCII whitespace and ASCII case folding,
 whereas Go's `strings.Fields` and `strings.ToLower` are Unicode-aware.
+
+
+## Filtered command-processing entry point
+
+`bot_command_process(const struct bot_command_request *request)` applies the
+filter pipeline before invoking `bot_command_dispatch`. The request structure
+is 96 bytes:
+
+| Offset | Field | Type |
+|---:|---|---|
+| 0 | filters | pointer to 16-byte filter entries |
+| 8 | filter_count | uint32 |
+| 16 | source nick | pointer |
+| 24 | source nick length | size_t |
+| 32 | command entries | pointer to 32-byte entries |
+| 40 | command_count | uint32 |
+| 48 | context text | pointer |
+| 56 | context text length | size_t |
+| 64 | addressed | uint32 |
+| 68 | factoid_addition | uint32 |
+| 72 | output arguments | char pointer |
+| 80 | output capacity | size_t |
+| 88 | output handler | pointer-to-pointer |
+
+The caller supplies a fully constructed context text and computes
+`factoid_addition` against the original IRC line. The function evaluates
+filters first; on rejection it returns 0 and clears valid output buffers.
+Otherwise it forwards the dispatch result (1, 0, or -1). The request pointer
+must be non-null and all referenced structures must remain valid for the call.
