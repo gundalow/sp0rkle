@@ -29,6 +29,13 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 - Ordered rewrite callback pipeline with alternating caller-owned buffers and failure propagation.
 
+### Karma feature primitives
+
+- Added a byte-span parser for `++` and `--` annotations, including reverse-order result semantics and one-level parenthesised multi-word subjects.
+- Added ASCII key normalisation and caller-owned karma record mutation for score, vote count, last upvoter/downvoter and Unix-millisecond timestamps.
+- Record updates reject signed-score and unsigned-vote overflow without changing the record.
+- C tests cover parser examples, record updates and overflow boundaries. Unicode letter/number classification, persistent collection operations, event wiring and command responses remain outstanding.
+
 ### Database key primitives
 
 - Added byte-exact encoders for string, uint64, and boolean key elements using the reference unit separator.
