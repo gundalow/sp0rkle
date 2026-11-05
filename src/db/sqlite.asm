@@ -1302,7 +1302,7 @@ db_store_backup:
 db_store_integrity_check:
     push rbx
     push r12
-    sub rsp, 16
+    sub rsp, 24
     mov r12, rdi
     mov qword [rsp], 0
     test r12, r12
@@ -1346,7 +1346,7 @@ db_store_integrity_check:
 .integrity_error:
     mov eax, -1
 .integrity_done:
-    add rsp, 16
+    add rsp, 24
     pop r12
     pop rbx
     ret
