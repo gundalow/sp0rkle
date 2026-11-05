@@ -4,6 +4,10 @@ global main
 extern puts
 extern strcmp
 extern str_len
+extern strn_len
+extern str_ascii_casecmp_n
+extern mem_copy
+extern mem_equal
 extern str_ascii_casecmp
 extern irc_line_length
 
@@ -62,6 +66,7 @@ main:
 run_selftest:
     push rbp
     mov rbp, rsp
+    sub rsp, 16
     lea rdi, [rel test_irc_line]
     call irc_line_length
     cmp rax, 12
@@ -75,6 +80,33 @@ run_selftest:
     call str_len
     cmp rax, 7
     jne .failed
+    lea rdi, [rel test_upper]
+    mov esi, 3
+    call strn_len
+    cmp rax, 3
+    jne .failed
+    lea rdi, [rel test_upper]
+    lea rsi, [rel test_lower]
+    mov edx, 7
+    call str_ascii_casecmp_n
+    test eax, eax
+    jne .failed
+    lea rdi, [rel test_upper]
+    lea rsi, [rel test_upper]
+    mov edx, 8
+    call mem_equal
+    test eax, eax
+    jne .failed
+    lea rdi, [rbp - 8]
+    lea rsi, [rel test_upper]
+    mov edx, 8
+    call mem_copy
+    lea rdi, [rbp - 8]
+    lea rsi, [rel test_upper]
+    mov edx, 8
+    call mem_equal
+    test eax, eax
+    jne .failed
     lea rdi, [rel selftest_ok]
     call puts
     xor eax, eax
@@ -84,5 +116,6 @@ run_selftest:
     call puts
     mov eax, 1
 .return:
+    add rsp, 16
     pop rbp
     ret
