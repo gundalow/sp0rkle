@@ -35,7 +35,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - The adapter rejects out-of-bounds slices, requires a nick-bearing prefix (`!` or `@`), and leaves whitespace/addressing policy to `bot_context_prepare_privmsg`.
 - Added C regression coverage and `docs/IRC_CONTEXT_ABI.md`; the Makefile builds and runs this test.
 - Added `bot_irc_privmsg_context` to compose extraction, Context body/address preparation, and reply-target resolution in one call.
-- Regression tests verify a channel message addressed to the bot becomes the expected body, addressed flag, and channel reply target. The adapter still does not invoke filters or command handlers.
+- Regression tests verify addressed channel messages and direct messages produce the expected body, addressed flag, and reply destination. The adapter still does not invoke filters or command handlers.
 
 ## Not implemented yet
 
