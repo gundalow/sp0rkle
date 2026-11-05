@@ -54,6 +54,12 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Added C regression tests for first/last connection transitions, late registration, poll ordering/count, and inactive poll suppression.
 - This establishes lifecycle semantics but does not yet implement a timer scheduler, background goroutine equivalent, or full server-set reconnect manager.
 
+### IRC outbound serializer
+
+- Added a bounded serializer/sender for PRIVMSG, CTCP ACTION and TOPIC frames, using the existing complete-send transport primitive.
+- Rejects NUL/CR/LF injection in target and text, rejects spaces in targets, and checks scratch capacity before writing.
+- Added socketpair regression tests for exact wire frames, ACTION wrapping, injection rejection and insufficient capacity.
+
 ### IRC PRIVMSG command pipeline
 
 - Added `bot_irc_privmsg_command_process`, which composes parsed user PRIVMSG extraction, Context preparation, raw-body factoid detection, nick filtering, addressed gating, longest-prefix command matching and argument normalization.
