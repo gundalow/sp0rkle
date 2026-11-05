@@ -17,15 +17,14 @@ event-loop/scheduler implementation.
 | 16 | poll callback | `void (*)(void *ctx, void *const *contexts, size_t count)` |
 | 24 | opaque context | pointer |
 | 32 | active | uint32 |
-| 36 | reserved | uint32 |
+| 36 | registered | uint32 |
 
 `struct bot_poller_state` is 24 bytes: connection count at offset 0,
 entry-array pointer at 8, and entry count at 16.
 
 ## Operations
 
-- `bot_poller_set_init(state, entries, count)` resets connection count and
-  every entry's active flag. Storage must remain valid for the state lifetime.
+- `bot_poller_set_init(state, entries, count)` resets connection count and every entry's active and registered flags. Storage must remain valid for the state lifetime.
 - `bot_poller_set_add(state, index)` registers/activates an entry. If at
   least one connection exists, its start callback runs immediately.
 - `bot_poller_set_connection(state, connected)` increments/decrements the
