@@ -29,21 +29,21 @@ main:
     cmp rdi, 1
     jle .default
     mov rdi, [r12 + 8]
-    lea rsi, [arg_version]
+    mov rsi, arg_version
     call strcmp
     test eax, eax
     jz .version
     mov rdi, [r12 + 8]
-    lea rsi, [arg_selftest]
+    mov rsi, arg_selftest
     call strcmp
     test eax, eax
     jz .selftest
-    lea rdi, [usage_text]
+    mov rdi, usage_text
     call puts
     mov eax, 2
     jmp .done
 .version:
-    lea rdi, [version_text]
+    mov rdi, version_text
     call puts
     xor eax, eax
     jmp .done
@@ -51,7 +51,7 @@ main:
     call run_selftest
     jmp .done
 .default:
-    lea rdi, [startup_text]
+    mov rdi, startup_text
     call puts
     xor eax, eax
 .done:
@@ -63,25 +63,25 @@ main:
 run_selftest:
     push rbp
     mov rbp, rsp
-    lea rdi, [test_irc_line]
+    mov rdi, test_irc_line
     call irc_line_length
     cmp rax, 12
     jne .failed
-    lea rdi, [test_upper]
-    lea rsi, [test_lower]
+    mov rdi, test_upper
+    mov rsi, test_lower
     call str_ascii_casecmp
     test eax, eax
     jne .failed
-    lea rdi, [test_upper]
+    mov rdi, test_upper
     call str_len
     cmp rax, 7
     jne .failed
-    lea rdi, [selftest_ok]
+    mov rdi, selftest_ok
     call puts
     xor eax, eax
     jmp .return
 .failed:
-    lea rdi, [selftest_fail]
+    mov rdi, selftest_fail
     call puts
     mov eax, 1
 .return:
