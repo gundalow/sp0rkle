@@ -12,7 +12,7 @@ karma_key_normalize:
     test rdx, rdx
     jz .key_error
     cmp rsi, rcx
-    ja .key_error
+    jae .key_error
     xor r8d, r8d
 .key_loop:
     cmp r8, rsi
@@ -51,12 +51,14 @@ karma_record_apply:
     cmp esi, -1
     jne .record_error
     mov rax, [rdi + 24]
-    cmp rax, 0x8000000000000000
+    mov r9, 0x8000000000000000
+    cmp rax, r9
     je .record_error
     jmp .record_votes
 .record_positive:
     mov rax, [rdi + 24]
-    cmp rax, 0x7fffffffffffffff
+    mov r9, 0x7fffffffffffffff
+    cmp rax, r9
     je .record_error
 .record_votes:
     mov rax, [rdi + 32]
