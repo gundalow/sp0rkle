@@ -1,5 +1,7 @@
 default rel
 
+extern bot_filter_pipeline_should_process
+
 global bot_command_match
 global bot_command_normalize_args
 global bot_command_dispatch
