@@ -1,6 +1,7 @@
 default rel
 
 global bot_command_match
+global bot_command_normalize_args
 
 ; struct bot_command_entry (32 bytes):
 ;   +0  const char *prefix
@@ -93,4 +94,84 @@ bot_command_match:
     pop r12
     pop rbx
     pop rbp
+    ret
+
+
+; ssize_t bot_command_normalize_args(input, input_len, output, output_capacity)
+; Trims leading/trailing ASCII whitespace and compresses each internal run
+; to one space. Capacity includes the terminating NUL. Returns output length,
+; or -1 when output is null/too small. On failure, output[0] is cleared when
+; possible. The input and output may not overlap.
+bot_command_normalize_args:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    xor ebx, ebx
+    xor r10d, r10d
+    xor r11d, r11d              ; pending whitespace
+
+    test r14, r14
+    jz .error
+    test r15, r15
+    jz .error
+
+.scan:
+    cmp r10, r13
+    jae .finish
+    movzx eax, byte [r12 + r10]
+    inc r10
+    cmp al, ' '
+    je .space
+    cmp al, 9
+    jb .character
+    cmp al, 13
+    jbe .space
+.character:
+    test r11d, r11d
+    jz .write_char
+    test rbx, rbx
+    jz .clear_pending
+    lea rdx, [rbx + 1]
+    cmp rdx, r15
+    jae .error
+    mov byte [r14 + rbx], ' '
+    inc rbx
+.clear_pending:
+    xor r11d, r11d
+.write_char:
+    lea rdx, [rbx + 1]
+    cmp rdx, r15
+    jae .error
+    mov [r14 + rbx], al
+    inc rbx
+    jmp .scan
+.space:
+    test rbx, rbx
+    jz .scan
+    mov r11d, 1
+    jmp .scan
+.finish:
+    mov byte [r14 + rbx], 0
+    mov rax, rbx
+    jmp .return
+.error:
+    test r14, r14
+    jz .error_return
+    test r15, r15
+    jz .error_return
+    mov byte [r14], 0
+.error_return:
+    mov rax, -1
+.return:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
