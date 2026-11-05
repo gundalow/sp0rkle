@@ -37,6 +37,8 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 
 - db_store_backup(source_handle, destination_path): writes a consistent point-in-time SQLite snapshot using the online backup API. The destination is opened/created and closed by the function; periodic scheduling, compression, rotation and secure directory policy belong to the application layer.
 
+- db_store_integrity_check(handle): runs SQLite PRAGMA integrity_check and returns 0 only when the result is exactly `ok`; returns -1 on corruption or database errors.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
