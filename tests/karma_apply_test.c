@@ -18,6 +18,7 @@ struct request {
     void *ctx; char *key; uint64_t key_capacity;
     struct karma_record *record;
 };
+extern long karma_parse_annotations(const char *, size_t, struct annotation *, size_t);
 extern long karma_apply_annotations(const struct request *);
 static struct karma_record stored;
 static int have_record;
