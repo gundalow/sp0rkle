@@ -28,7 +28,7 @@ irc_event_dispatch:
     push r13
     push r14
     push r15
-    sub rsp, 8
+    sub rsp, 16
 
     mov r12, rdi                ; entries
     mov r13, rsi                ; count
@@ -53,9 +53,10 @@ irc_event_dispatch:
     cmp r10, rax
     ja .invalid
 
-    xor r8d, r8d                ; invocation count
-    xor r9d, r9d                ; entry index
+    mov qword [rbp - 48], 0     ; invocation count
+    mov qword [rbp - 56], 0     ; entry index
 .loop:
+    mov r9, [rbp - 56]
     cmp r9, r13
     jae .done
     mov rax, r9
@@ -86,17 +87,17 @@ irc_event_dispatch:
     mov rdx, r15
     mov rcx, rbx
     call rax
-    inc r8
+    inc qword [rbp - 48]
 .next:
-    inc r9
+    inc qword [rbp - 56]
     jmp .loop
 .done:
-    mov rax, r8
+    mov rax, [rbp - 48]
     jmp .return
 .invalid:
     mov rax, -1
 .return:
-    add rsp, 8
+    add rsp, 16
     pop r15
     pop r14
     pop r13
