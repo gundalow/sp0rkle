@@ -5,21 +5,21 @@ section .text
 global karma_bson_encode
 
 %macro WRITE_STRING 3
-    mov byte [rbx + r13], 0x02
+    mov byte [rdi], 0x02
     inc r13
     lea rsi, [rel %%name]
     mov ecx, %%namelen
     rep movsb
-    mov byte [rbx + r13], 0
+    mov byte [rdi], 0
     inc r13
     mov eax, [r14 + %3]
     inc eax
-    mov [rbx + r13], eax
+    mov [rdi], eax
     add r13, 4
     mov rsi, [r14 + %2]
     mov ecx, [r14 + %3]
     rep movsb
-    mov byte [rbx + r13], 0
+    mov byte [rdi], 0
     inc r13
     jmp %%done
 %%name: db %1
@@ -28,15 +28,15 @@ global karma_bson_encode
 %endmacro
 
 %macro WRITE_INT32 2
-    mov byte [rbx + r13], 0x10
+    mov byte [rdi], 0x10
     inc r13
     lea rsi, [rel %%name]
     mov ecx, %%namelen
     rep movsb
-    mov byte [rbx + r13], 0
+    mov byte [rdi], 0
     inc r13
     mov eax, [r14 + %2]
-    mov [rbx + r13], eax
+    mov [rdi], eax
     add r13, 4
     jmp %%done
 %%name: db %1
@@ -45,19 +45,19 @@ global karma_bson_encode
 %endmacro
 
 %macro WRITE_DATE 2
-    mov byte [rbx + r13], 0x09
+    mov byte [rdi], 0x09
     inc r13
     lea rsi, [rel %%name]
     mov ecx, %%namelen
     rep movsb
-    mov byte [rbx + r13], 0
+    mov byte [rdi], 0
     inc r13
     mov rax, [r14 + %2]
     test rax, rax
     jnz %%time_ready
     mov rax, -62135596800000
 %%time_ready:
-    mov [rbx + r13], rax
+    mov [rdi], rax
     add r13, 8
     jmp %%done
 %%name: db %1
@@ -116,7 +116,7 @@ karma_bson_encode:
 
     mov dword [rbx], 0
     mov r13d, 4
-    lea rdi, [rbx + r13]
+    lea rdi, [rdi]
     WRITE_STRING "subject", 0, 8
     WRITE_STRING "key", 16, 24
     WRITE_INT32 "score", 24
@@ -125,7 +125,7 @@ karma_bson_encode:
     WRITE_DATE "upvtime", 56
     WRITE_STRING "downvoter", 64, 72
     WRITE_DATE "downvtime", 80
-    mov byte [rbx + r13], 0
+    mov byte [rdi], 0
     inc r13
     mov eax, r13d
     mov [rbx], eax
