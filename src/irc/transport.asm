@@ -362,7 +362,6 @@ irc_session_next:
 ; Sends JOIN <channel>\r\n. Channel is trusted configuration and must not
 ; contain CR/LF. Returns 0 on success, -1 on formatting/send error.
 global irc_send_join
-extern snprintf
 extern irc_tcp_send_all
 
 section .rodata
@@ -409,7 +408,6 @@ irc_send_join:
 ; parse error, and -2 if numeric 433 reports nickname already in use.
 global irc_session_wait_welcome
 extern irc_session_next
-extern str_ascii_casecmp_n
 
 section .rodata
 numeric_welcome: db "001"
