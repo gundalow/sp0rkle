@@ -1,7 +1,7 @@
 NASM ?= nasm
 CC ?= cc
 BUILD_DIR := build
-SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/db/bson.asm src/db/bson_find.asm src/db/sqlite.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_bson.asm src/features/karma_store.asm src/features/karma_event.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
+SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/db/collection.asm src/db/bson.asm src/db/bson_find.asm src/db/sqlite.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_bson.asm src/features/karma_store.asm src/features/karma_event.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
 OBJECTS := $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/sp0rkle
 TRANSPORT_TEST := $(BUILD_DIR)/transport_test
@@ -89,7 +89,7 @@ $(REWRITE_TEST): tests/rewrite_test.c $(BUILD_DIR)/bot/rewrite.o
 $(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o
 	$(CC) -no-pie -o $@ $^
 
-$(DB_STORE_TEST): tests/db_store_test.c $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/db/key.o
+$(DB_STORE_TEST): tests/db_store_test.c $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/collection.o
 	$(CC) -no-pie -o $@ $^ -lsqlite3
 
 test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_BSON_TEST) $(KARMA_STORE_TEST) $(KARMA_EVENT_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
