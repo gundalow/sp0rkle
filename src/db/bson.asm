@@ -1,6 +1,7 @@
 ; Bounds-checked structural validator for BSON documents.
 default rel
 global bson_document_validate
+global bson_document_encode
 
 section .text
 ; int bson_document_validate(document, document_len)
@@ -273,4 +274,119 @@ bson_validate_inner:
     pop r12
     pop rbx
     pop rbp
+    ret
+
+; Field descriptor (40 bytes):
+; +0 name pointer, +8 name length, +16 BSON type (uint32), +20 reserved,
+; +24 raw BSON value pointer, +32 raw BSON value length.
+; int bson_document_encode(fields,count,out,capacity,out_len)
+; Writes one BSON document from raw, already BSON-encoded field values.
+; Capacity failures are detected before output is modified. Structural value
+; validation runs after assembly; invalid raw values leave output unspecified.
+bson_document_encode:
+    cld
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    mov rbx, r8
+    test r12, r12
+    jz .encode_doc_error
+    test r14, r14
+    jz .encode_doc_error
+    test rbx, rbx
+    jz .encode_doc_error
+
+    ; Preflight every name and total size before writing anything.
+    mov r11d, 5
+    xor r10d, r10d
+.encode_doc_size_loop:
+    cmp r10, r13
+    jae .encode_doc_size_done
+    mov rax, r10
+    imul rax, 40
+    jo .encode_doc_error
+    lea r9, [r12 + rax]
+    mov rsi, [r9]
+    test rsi, rsi
+    jz .encode_doc_error
+    mov rcx, [r9 + 8]
+    mov r8, [r9 + 32]
+    test r8, r8
+    jz .encode_doc_value_pointer_ok
+    cmp qword [r9 + 24], 0
+    je .encode_doc_error
+.encode_doc_value_pointer_ok:
+    xor eax, eax
+.encode_doc_name_check:
+    cmp rax, rcx
+    jae .encode_doc_name_done
+    cmp byte [rsi + rax], 0
+    je .encode_doc_error
+    inc rax
+    jmp .encode_doc_name_check
+.encode_doc_name_done:
+    add r11, 2
+    jc .encode_doc_error
+    add r11, rcx
+    jc .encode_doc_error
+    add r11, r8
+    jc .encode_doc_error
+    inc r10
+    jmp .encode_doc_size_loop
+.encode_doc_size_done:
+    cmp r11, 0x7fffffff
+    ja .encode_doc_error
+    cmp r11, r15
+    ja .encode_doc_error
+
+    mov rdi, r14
+    add rdi, 4
+    xor r10d, r10d
+.encode_doc_write_loop:
+    cmp r10, r13
+    jae .encode_doc_finish
+    mov rax, r10
+    imul rax, 40
+    lea r9, [r12 + rax]
+    mov eax, [r9 + 16]
+    mov [rdi], al
+    inc rdi
+    mov rsi, [r9]
+    mov rcx, [r9 + 8]
+    rep movsb
+    mov byte [rdi], 0
+    inc rdi
+    mov rsi, [r9 + 24]
+    mov rcx, [r9 + 32]
+    rep movsb
+    inc r10
+    jmp .encode_doc_write_loop
+.encode_doc_finish:
+    mov byte [rdi], 0
+    inc rdi
+    mov r15, rdi
+    sub r15, r14
+    mov [r14], r15d
+    mov [rbx], r15
+    mov rdi, r14
+    mov rsi, r15
+    call bson_document_validate
+    test eax, eax
+    jnz .encode_doc_error
+    xor eax, eax
+    jmp .encode_doc_done
+.encode_doc_error:
+    mov eax, -1
+.encode_doc_done:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
