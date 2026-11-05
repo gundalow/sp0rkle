@@ -4,6 +4,7 @@ global bot_command_match
 global bot_command_normalize_args
 global bot_command_dispatch
 global bot_is_factoid_addition
+global bot_command_help_text
 
 ; struct bot_command_entry (32 bytes):
 ;   +0  const char *prefix
@@ -310,4 +311,36 @@ bot_is_factoid_addition:
     ret
 .fact_yes:
     mov eax, 1
+    ret
+
+
+; const char *bot_command_help_text(entries, count, text, text_len)
+; Returns the help string associated with the longest matching prefix,
+; or NULL if no command prefix matches.
+bot_command_help_text:
+    push rbx
+    push r12
+    push r13
+    push r14
+    mov r12, rdi
+    mov r13d, esi
+    mov r14, rdx
+    mov rbx, rcx
+    mov rdi, r12
+    mov esi, r13d
+    mov rdx, r14
+    mov rcx, rbx
+    xor r8d, r8d
+    call bot_command_match
+    test rax, rax
+    jz .no_help
+    mov rax, [rax + 24]
+    jmp .help_return
+.no_help:
+    xor eax, eax
+.help_return:
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
