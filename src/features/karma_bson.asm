@@ -55,6 +55,7 @@ global karma_bson_encode
     mov rax, [r14 + %2]
     mov [rdi], rax
     add rdi, 8
+    jmp %%done
 %%done:
 %%name: db %1
 %%namelen equ $ - %%name
