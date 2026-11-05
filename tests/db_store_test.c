@@ -15,6 +15,10 @@ extern int db_store_get(void *, const void *, size_t, const void *, size_t, void
 extern int db_store_delete(void *, const void *, size_t, const void *, size_t);
 extern int db_store_sequence_next(void *, const void *, size_t, int64_t *);
 extern int db_store_sequence_set(void *, const void *, size_t, int64_t);
+extern int db_store_bucket_ensure(void *, const void *, size_t);
+extern int db_store_bucket_exists(void *, const void *, size_t);
+extern int db_store_bucket_delete(void *, const void *, size_t);
+extern long db_key_path_append(const unsigned char *, size_t, const unsigned char *, size_t, unsigned char *, size_t);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -31,6 +35,21 @@ int main(void) {
 
     assert(db_store_open(filename, &db) == 0);
     assert(db != NULL);
+    assert(db_store_bucket_exists(db, "", 0) == 1);
+    assert(db_store_bucket_delete(db, "", 0) == -1);
+    const unsigned char parent_name[] = {'p', 0, 'r'};
+    const unsigned char child_name[] = {'c', 0xff};
+    unsigned char child_path[64] = {0};
+    assert(db_store_bucket_ensure(db, parent_name, sizeof(parent_name)) == 0);
+    assert(db_key_path_append(parent_name, sizeof(parent_name), child_name, sizeof(child_name), child_path, sizeof(child_path)) == 16);
+    assert(db_store_bucket_ensure(db, child_path, 16) == 0);
+    assert(db_store_bucket_exists(db, child_path, 16) == 1);
+    assert(db_store_put(db, child_path, 16, "nested", 6, "child", 5) == 0);
+    assert(db_store_put(db, parent_name, sizeof(parent_name), "parent", 6, "parent", 6) == 0);
+    assert(db_store_bucket_delete(db, parent_name, sizeof(parent_name)) == 0);
+    assert(db_store_bucket_exists(db, parent_name, sizeof(parent_name)) == 0);
+    assert(db_store_bucket_exists(db, child_path, 16) == 0);
+    assert(db_store_get(db, child_path, 16, "nested", 6, out, sizeof(out), &out_len) == 0);
     assert(db_store_put(db, path, sizeof(path), key, sizeof(key), value, sizeof(value)) == 0);
     assert(db_store_get(db, path, sizeof(path), key, sizeof(key), out, sizeof(out), &out_len) == 1);
     assert(out_len == sizeof(value));
