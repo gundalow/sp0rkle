@@ -39,6 +39,13 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 
 - db_store_integrity_check(handle): runs SQLite PRAGMA integrity_check and returns 0 only when the result is exactly `ok`; returns -1 on corruption or database errors.
 
+## Keyed collection adapters
+
+- `db_store_keyed_delete(handle, parent_path, parent_path_len, key, key_len, child_path_scratch, child_path_capacity)`: mirrors the keyed collection delete rule. If the length-delimited child bucket exists, it recursively deletes that bucket; otherwise it deletes the direct value at parent_path/key.
+- `db_store_keyed_scan_open(handle, path, path_len, key, key_len, statement_out, path_scratch, path_capacity)`: opens a recursive scan at path when key_len is zero, or at the nested bucket path formed by appending key otherwise.
+
+The caller supplies the collection root path, encoded parent path, and final key element separately. Values remain opaque BSON byte sequences; typed decoding is performed by collection-specific codecs.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
