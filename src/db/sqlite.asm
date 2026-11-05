@@ -47,7 +47,7 @@ db_store_open:
     push rbx
     push r12
     push r13
-    sub rsp, 24
+    sub rsp, 32
     mov r12, rdi
     mov r13, rsi
     test r12, r12
@@ -83,7 +83,7 @@ db_store_open:
 .open_error:
     mov eax, -1
 .open_done:
-    add rsp, 24
+    add rsp, 32
     pop r13
     pop r12
     pop rbx
@@ -108,10 +108,11 @@ db_store_exec:
     call sqlite3_exec
     add rsp, 8
     test eax, eax
-    setz al
-    movzx eax, al
-    neg eax
-    add eax, 1
+    jz .exec_ok
+    mov eax, -1
+    ret
+.exec_ok:
+    xor eax, eax
     ret
 
 db_store_begin:
@@ -142,7 +143,7 @@ db_store_put:
     mov r15, rcx
     mov rbx, r8
     mov [rsp], r9
-    mov rax, [rsp + 72]
+    mov rax, [rsp + 80]
     mov [rsp + 8], rax
     mov qword [rsp + 16], 0
     test r12, r12
@@ -151,7 +152,6 @@ db_store_put:
     jz .put_error
     test r15, r15
     jz .put_error
-    test qword [rsp], 0
     ; A zero-length value is valid; non-zero values require a pointer.
     cmp qword [rsp + 8], 0
     je .put_prepare
@@ -242,7 +242,6 @@ db_store_get:
     jz .get_error
     test r15, r15
     jz .get_error
-    test qword [rsp + 16], 0
     mov rdi, r12
     lea rsi, [rel get_sql]
     mov edx, -1
