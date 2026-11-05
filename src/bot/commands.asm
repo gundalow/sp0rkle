@@ -6,6 +6,7 @@ global bot_command_dispatch
 global bot_is_factoid_addition
 global bot_command_help_text
 global bot_command_possible
+global bot_command_process
 
 ; struct bot_command_entry (32 bytes):
 ;   +0  const char *prefix
@@ -503,6 +504,84 @@ bot_command_possible:
     mov rax, -1
 .possible_return:
     add rsp, 104
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+
+; struct bot_command_request (96 bytes):
+;  +0 filters pointer
+;  +8 filter_count (u32)
+; +16 source nick pointer
+; +24 source nick length
+; +32 command entries pointer
+; +40 command_count (u32)
+; +48 context text pointer
+; +56 context text length
+; +64 addressed (u32)
+; +68 factoid_addition (u32, computed from original IRC line)
+; +72 output args pointer
+; +80 output capacity
+; +88 output handler pointer
+;
+; int bot_command_process(const struct bot_command_request *request)
+; Applies the filter pipeline first, then command dispatch. A filtered line
+; returns 0 and clears valid outputs. Dispatch result is forwarded unchanged.
+bot_command_process:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 24
+
+    mov r12, rdi
+    mov rdi, [r12]
+    mov esi, [r12 + 8]
+    mov rdx, [r12 + 16]
+    mov rcx, [r12 + 24]
+    call bot_filter_pipeline_should_process
+    test eax, eax
+    jz .process_filtered
+
+    mov rdi, [r12 + 32]
+    mov esi, [r12 + 40]
+    mov rdx, [r12 + 48]
+    mov rcx, [r12 + 56]
+    mov r8d, [r12 + 64]
+    mov r9d, [r12 + 68]
+    mov rax, [r12 + 72]
+    mov [rsp], rax
+    mov rax, [r12 + 80]
+    mov [rsp + 8], rax
+    mov rax, [r12 + 88]
+    mov [rsp + 16], rax
+    call bot_command_dispatch
+    jmp .process_return
+
+.process_filtered:
+    mov rax, [r12 + 72]
+    test rax, rax
+    jz .clear_handler
+    cmp qword [r12 + 80], 0
+    je .clear_handler
+    mov byte [rax], 0
+.clear_handler:
+    mov rax, [r12 + 88]
+    test rax, rax
+    jz .filtered_result
+    mov qword [rax], 0
+.filtered_result:
+    xor eax, eax
+
+.process_return:
+    add rsp, 24
     pop r15
     pop r14
     pop r13
