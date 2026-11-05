@@ -31,6 +31,8 @@ struct scan_tree_entry { void *path; size_t path_capacity; size_t *path_len; voi
 extern int db_store_scan_tree_next(void *, struct scan_tree_entry *);
 extern int db_store_keyed_delete(void *, const void *, size_t, const void *, size_t, void *, size_t);
 extern int db_store_keyed_scan_open(void *, const void *, size_t, const void *, size_t, void **, void *, size_t);
+struct indexed_request { const void *value_path; size_t value_path_len; const void *value_key; size_t value_key_len; const void *value; size_t value_len; const struct batch_entry *old_indexes; size_t old_count; const struct batch_entry *new_indexes; size_t new_count; };
+extern int db_store_indexed_update(void *, const struct indexed_request *);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -101,6 +103,31 @@ int main(void) {
     assert(scan_key_len == 1 && scan_value_len == 1 && scan_key[0] == 'b' && scan_value[0] == 'B');
     assert(db_store_scan_next(cursor, scan_key, sizeof(scan_key), &scan_key_len, scan_value, sizeof(scan_value), &scan_value_len) == 0);
     assert(db_store_scan_close(cursor) == 0);
+
+    const unsigned char vals_path[]="records_vals";
+    const unsigned char idxs_path[]="records_idxs";
+    const unsigned char object_key[]={'_','i','d',0x1f,0,1,2,3,4,5,6,7,8,9,10,11};
+    const unsigned char old_index[]={'n','a','m','e',0x1f,'O','l','d'};
+    const unsigned char new_index[]={'n','a','m','e',0x1f,'N','e','w'};
+    const unsigned char pointer_value[]= {'_','i','d',0x1f,0,1,2,3,4,5,6,7,8,9,10,11};
+    struct batch_entry first_index={idxs_path,sizeof(idxs_path)-1,old_index,sizeof(old_index),pointer_value,sizeof(pointer_value)};
+    struct indexed_request indexed={vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),"record-one",10,NULL,0,&first_index,1};
+    assert(db_store_indexed_update(db,&indexed)==0);
+    assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==1);
+    assert(out_len==10 && memcmp(out,"record-one",10)==0);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,old_index,sizeof(old_index),out,sizeof(out),&out_len)==1);
+    struct batch_entry old_index_entry=first_index;
+    struct batch_entry next_index={idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),pointer_value,sizeof(pointer_value)};
+    indexed.value="record-two"; indexed.value_len=10; indexed.old_indexes=&old_index_entry; indexed.old_count=1; indexed.new_indexes=&next_index;
+    assert(db_store_indexed_update(db,&indexed)==0);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,old_index,sizeof(old_index),out,sizeof(out),&out_len)==0);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==1);
+    struct batch_entry bad_index={NULL,0,"bad",3,pointer_value,sizeof(pointer_value)};
+    indexed.value="record-bad"; indexed.old_indexes=&next_index; indexed.new_indexes=&bad_index;
+    assert(db_store_indexed_update(db,&indexed)==-1);
+    assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==1);
+    assert(out_len==10 && memcmp(out,"record-two",10)==0);
+    assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==1);
 
     assert(db_store_put(db, path, sizeof(path), key, sizeof(key), value, sizeof(value)) == 0);
     assert(db_store_get(db, path, sizeof(path), key, sizeof(key), out, sizeof(out), &out_len) == 1);
