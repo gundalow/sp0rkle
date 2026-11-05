@@ -21,7 +21,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes make nasm
+          sudo apt-get install --yes make nasm libsqlite3-dev
 
       - name: Build, test, and show version
         run: make ; make test && ./build/sp0rkle --version
