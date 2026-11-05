@@ -163,11 +163,12 @@ irc_parse_message:
     ja .alpha_command
     cmp r11, 3
     jne .bad
+    lea r9, [r12 + r10]
     xor ecx, ecx
 .numeric_scan:
     cmp rcx, r11
     jae .command_done
-    mov al, [r12 + r10 + rcx]
+    mov al, [r9 + rcx]
     cmp al, '0'
     jb .bad
     cmp al, '9'
@@ -175,6 +176,7 @@ irc_parse_message:
     inc rcx
     jmp .numeric_scan
 .alpha_command:
+    lea r9, [r12 + r10]
     xor ecx, ecx
 .alpha_scan:
     cmp rcx, r11
