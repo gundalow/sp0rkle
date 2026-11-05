@@ -23,6 +23,9 @@ extern int irc_send_registration(int fd, const char *nick,
                                  const char *user, const char *realname);
 extern int irc_session_next(int fd, char *line, size_t capacity,
                             struct irc_message *out);
+extern int irc_session_wait_welcome(int fd, char *line, size_t capacity,
+                                    struct irc_message *out);
+extern int irc_send_join(int fd, const char *channel);
 
 static void fail(const char *message) {
     fprintf(stderr, "transport test: %s\n", message);
@@ -58,6 +61,52 @@ static void test_registration(void) {
     close(sv[1]);
 }
 
+static void test_join(void) {
+    int sv[2];
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
+        fail("socketpair for JOIN failed");
+    if (irc_send_join(sv[0], "#test") != 0)
+        fail("irc_send_join returned an error");
+
+    const char expected[] = "JOIN #test\\r\\n";
+    char actual[sizeof(expected)];
+    read_exact(sv[1], actual, sizeof(expected) - 1);
+    if (memcmp(actual, expected, sizeof(expected) - 1) != 0)
+        fail("JOIN wire format did not match");
+    close(sv[0]);
+    close(sv[1]);
+}
+
+static void test_welcome_and_nick_in_use(void) {
+    int sv[2];
+    char line[512];
+    struct irc_message message;
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
+        fail("socketpair for welcome failed");
+    const char welcome[] = ":server 001 bot :Welcome\\r\\n";
+    if (write(sv[1], welcome, sizeof(welcome) - 1) !=
+        (ssize_t)(sizeof(welcome) - 1))
+        fail("could not write welcome frame");
+    if (irc_session_wait_welcome(sv[0], line, sizeof(line), &message) != 1)
+        fail("welcome numeric was not detected");
+    if (message.command_length != 3 || strcmp(line, ":server 001 bot :Welcome") != 0)
+        fail("welcome event fields were incorrect");
+    close(sv[0]);
+    close(sv[1]);
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
+        fail("socketpair for nick-in-use failed");
+    const char nick_error[] = ":server 433 * bot :Nickname in use\\r\\n";
+    if (write(sv[1], nick_error, sizeof(nick_error) - 1) !=
+        (ssize_t)(sizeof(nick_error) - 1))
+        fail("could not write nick-in-use frame");
+    if (irc_session_wait_welcome(sv[0], line, sizeof(line), &message) != -2)
+        fail("numeric 433 was not reported");
+    close(sv[0]);
+    close(sv[1]);
+}
+
 static void test_ping_pong_and_event(void) {
     int sv[2];
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
@@ -88,6 +137,8 @@ static void test_ping_pong_and_event(void) {
 
 int main(void) {
     test_registration();
+    test_join();
+    test_welcome_and_nick_in_use();
     test_ping_pong_and_event();
     puts("transport tests: PASS");
     return 0;
