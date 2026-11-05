@@ -43,7 +43,7 @@ int main(void) {
     assert(db_store_bucket_ensure(db, parent_name, sizeof(parent_name)) == 0);
     assert(db_key_path_append(parent_name, sizeof(parent_name), child_name, sizeof(child_name), child_path, sizeof(child_path)) == 13);
     assert(db_store_bucket_ensure(db, child_path, 13) == 0);
-    assert(db_store_bucket_exists(db, child_path, 16) == 1);
+    assert(db_store_bucket_exists(db, child_path, 13) == 1);
     assert(db_store_put(db, child_path, 13, "nested", 6, "child", 5) == 0);
     assert(db_store_put(db, parent_name, sizeof(parent_name), "parent", 6, "parent", 6) == 0);
     assert(db_store_bucket_delete(db, parent_name, sizeof(parent_name)) == 0);
