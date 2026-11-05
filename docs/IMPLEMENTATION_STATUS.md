@@ -24,6 +24,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Reference-compatible factoid-addition detection for `:is` and `:=` markers.
 - Longest-prefix command help-string lookup and up-to-ten candidate suggestions.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
+- Ordered rewrite callback pipeline with alternating caller-owned buffers and failure propagation.
 
 ## Not implemented yet
 
