@@ -322,6 +322,7 @@ bot_command_help_text:
     push r12
     push r13
     push r14
+    sub rsp, 8
     mov r12, rdi
     mov r13d, esi
     mov r14, rdx
@@ -339,6 +340,7 @@ bot_command_help_text:
 .no_help:
     xor eax, eax
 .help_return:
+    add rsp, 8
     pop r14
     pop r13
     pop r12
