@@ -61,7 +61,7 @@ int main(void) {
     out_len = bot_command_normalize_args("hello", 5, normalized, 5);
     assert(out_len == -1 && normalized[0] == 0);
     void *handler = NULL;
-    int dispatched = bot_command_dispatch(entries, 5, "Remind   List  1", 15,
+    int dispatched = bot_command_dispatch(entries, 5, "Remind   List  1", strlen("Remind   List  1"),
                                            1, NULL, normalized,
                                            sizeof(normalized), &handler);
     assert(dispatched == 1 && handler == (void *)3);
