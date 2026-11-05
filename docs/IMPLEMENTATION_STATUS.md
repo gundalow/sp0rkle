@@ -44,7 +44,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - uint64 values are encoded as fixed-width eight-byte big-endian values; boolean values use 0xff and 0x00.
 - Added key-name validation rejecting the unit separator and capacity checks that leave output untouched on failure.
 - Added C regression tests for exact bytes, binary values, invalid names, and insufficient output capacity.
-- Added fixed-width 12-byte ObjectId encoding and signed Unix-millisecond timestamp encoding (including pre-epoch values); hierarchical bucket storage, sequences, BSON records and transactions are still outstanding.
+- Added fixed-width 12-byte ObjectId encoding and signed Unix-millisecond timestamp encoding (including pre-epoch values). A durable SQLite BLOB store now supports transactions, upsert/get/delete, atomic per-path sequences, bucket creation/existence, and recursive bucket deletion. It is not BoltDB-file compatible; bucket enumeration, BSON records, keyed/indexed collection semantics, fsck, and compressed backups remain outstanding.
 
 ### Poller lifecycle
 
