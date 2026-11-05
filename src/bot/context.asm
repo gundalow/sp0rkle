@@ -1,6 +1,7 @@
 default rel
 
 global bot_strip_address_prefix
+global bot_context_prepare_privmsg
 
 ; int bot_strip_address_prefix(text, text_len, nick, nick_len,
 ;                              out_start, out_len)
@@ -128,4 +129,141 @@ bot_strip_address_prefix:
     pop r13
     pop r12
     pop rbx
+    ret
+
+
+; int bot_context_prepare_privmsg(text, text_len, botnick, nick_len,
+;                                 target, target_len,
+;                                 out_start, out_len, out_addressed)
+; Mirrors newContext for PRIVMSG: trim outer ASCII whitespace, remove an
+; optional botnick+(: ; , > -) address prefix, then mark addressed when the
+; original target exactly equals the bot nick. Output offsets refer to text.
+; Returns 0 on success, -1 for missing output pointers.
+bot_context_prepare_privmsg:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 72
+
+    mov r12, rdi                ; text
+    mov r13, rsi                ; text length
+    mov r14, rdx                ; bot nick
+    mov r15, rcx                ; nick length
+    mov rbx, r8                 ; target
+    mov [rbp - 48], r9          ; target length
+    mov rax, [rbp + 16]
+    mov [rbp - 88], rax         ; out_start
+    mov rax, [rbp + 24]
+    mov [rbp - 96], rax         ; out_len
+    mov rax, [rbp + 32]
+    mov [rbp - 104], rax        ; out_addressed
+
+    cmp qword [rbp - 88], 0
+    je .context_invalid
+    cmp qword [rbp - 96], 0
+    je .context_invalid
+    cmp qword [rbp - 104], 0
+    je .context_invalid
+
+    xor r10d, r10d              ; trimmed start
+    mov r11, r13                ; trimmed end
+.context_leading:
+    cmp r10, r11
+    jae .context_trimmed
+    movzx eax, byte [r12 + r10]
+    cmp al, ' '
+    je .context_lead_one
+    cmp al, 9
+    jb .context_trimmed
+    cmp al, 13
+    jbe .context_lead_one
+    jmp .context_trimmed
+.context_lead_one:
+    inc r10
+    jmp .context_leading
+.context_trimmed:
+.context_trailing:
+    cmp r11, r10
+    jbe .context_no_trailing
+    lea rax, [r11 - 1]
+    movzx ecx, byte [r12 + rax]
+    cmp cl, ' '
+    je .context_trail_one
+    cmp cl, 9
+    jb .context_no_trailing
+    cmp cl, 13
+    jbe .context_trail_one
+    jmp .context_no_trailing
+.context_trail_one:
+    dec r11
+    jmp .context_trailing
+.context_no_trailing:
+    mov [rbp - 56], r10         ; trimmed start
+    mov [rbp - 64], r11         ; trimmed end
+
+    lea rdi, [r12 + r10]
+    mov rsi, r11
+    sub rsi, r10
+    mov rdx, r14
+    mov rcx, r15
+    lea r8, [rbp - 72]
+    lea r9, [rbp - 80]
+    call bot_strip_address_prefix
+    test eax, eax
+    jz .context_unprefixed
+
+    mov rax, [rbp - 56]
+    add rax, [rbp - 72]
+    mov rcx, [rbp - 80]
+    mov rdx, 1
+    jmp .context_store
+
+.context_unprefixed:
+    mov rax, [rbp - 56]
+    mov rcx, [rbp - 64]
+    sub rcx, rax
+    xor edx, edx
+
+    ; The reference uses exact string equality for target == bot nick.
+    mov r8, [rbp - 48]
+    cmp r8, r15
+    jne .context_store
+    test r15, r15
+    jz .context_store
+    xor r9d, r9d
+.context_target_compare:
+    cmp r9, r15
+    jae .context_private
+    mov r8b, [rbx + r9]
+    cmp r8b, [r14 + r9]
+    jne .context_store
+    inc r9
+    jmp .context_target_compare
+.context_private:
+    mov edx, 1
+
+.context_store:
+    mov r8, [rbp - 88]
+    mov [r8], rax
+    mov r8, [rbp - 96]
+    mov [r8], rcx
+    mov r8, [rbp - 104]
+    mov [r8], rdx
+    xor eax, eax
+    jmp .context_return
+
+.context_invalid:
+    mov eax, -1
+.context_return:
+    add rsp, 72
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
     ret
