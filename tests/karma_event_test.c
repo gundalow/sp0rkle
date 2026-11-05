@@ -25,9 +25,10 @@ struct karma_store_context {
     char *upvoter; uint64_t upvoter_capacity;
     char *downvoter; uint64_t downvoter_capacity;
 };
+struct karma_annotation { uint64_t offset; uint32_t length; int32_t delta; };
 struct karma_event_context {
     struct karma_store_context *store;
-    struct { uint64_t offset; uint32_t length; int32_t delta; } *annotations;
+    struct karma_annotation *annotations;
     uint64_t annotation_capacity;
     char *key_scratch; uint64_t key_capacity;
     struct karma_record *record_scratch;
@@ -53,7 +54,7 @@ int main(void) {
     struct karma_store_context store={db,bson,sizeof(bson),encoded_key,sizeof(encoded_key),
         subject,sizeof(subject),keybuf,sizeof(keybuf),upvoter,sizeof(upvoter),
         downvoter,sizeof(downvoter)};
-    struct { uint64_t offset; uint32_t length; int32_t delta; } annotations[16];
+    struct karma_annotation annotations[16];
     char key_scratch[128];
     struct karma_record record_scratch;
     struct karma_event_context ctx={&store,annotations,16,key_scratch,sizeof(key_scratch),&record_scratch};
