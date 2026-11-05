@@ -1,7 +1,7 @@
 NASM ?= nasm
 CC ?= cc
 BUILD_DIR := build
-SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
+SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/irc/serialize.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/pollers.asm src/db/key.asm src/features/karma.asm src/features/karma_record.asm src/features/karma_apply.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
 OBJECTS := $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/sp0rkle
 TRANSPORT_TEST := $(BUILD_DIR)/transport_test
@@ -18,6 +18,7 @@ KARMA_TEST := $(BUILD_DIR)/karma_test
 KARMA_RECORD_TEST := $(BUILD_DIR)/karma_record_test
 KARMA_APPLY_TEST := $(BUILD_DIR)/karma_apply_test
 EVENT_TEST := $(BUILD_DIR)/event_test
+IRC_SERIALIZE_TEST := $(BUILD_DIR)/irc_serialize_test
 TRANSPORT_TEST_OBJECTS := $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/irc/transport.o
 
 .PHONY: all clean test
@@ -29,6 +30,9 @@ $(TARGET): $(OBJECTS)
 $(BUILD_DIR)/%.o: src/%.asm
 	@mkdir -p $(dir $@)
 	$(NASM) -f elf64 -g -F dwarf -Wall -Werror -w-reloc-rel-dword -o $@ $<
+
+$(IRC_SERIALIZE_TEST): tests/irc_serialize_test.c $(BUILD_DIR)/irc/serialize.o $(BUILD_DIR)/irc/transport.o
+	$(CC) -no-pie -o $@ $^
 
 $(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
@@ -72,7 +76,7 @@ $(REWRITE_TEST): tests/rewrite_test.c $(BUILD_DIR)/bot/rewrite.o
 $(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o
 	$(CC) -no-pie -o $@ $^
 
-test: $(TARGET) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_APPLY_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
+test: $(TARGET) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
 	./$(TARGET) --self-test
 	./$(IRC_CONTEXT_TEST)
 	./$(IRC_COMMAND_TEST)
@@ -81,6 +85,7 @@ test: $(TARGET) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_
 	./$(KARMA_TEST)
 	./$(KARMA_RECORD_TEST)
 	./$(KARMA_APPLY_TEST)
+	./$(IRC_SERIALIZE_TEST)
 	./$(EVENT_TEST)
 	./$(TRANSPORT_TEST)
 	./$(COMMAND_TEST)
