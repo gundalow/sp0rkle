@@ -62,7 +62,7 @@ $(KARMA_BSON_TEST): tests/karma_bson_test.c $(BUILD_DIR)/features/karma_bson.o
 $(KARMA_STORE_TEST): tests/karma_store_test.c $(BUILD_DIR)/features/karma_store.o $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o
 	$(CC) -no-pie -o $@ $^ -lsqlite3
 
-$(KARMA_EVENT_TEST): tests/karma_event_test.c $(BUILD_DIR)/features/karma_event.o $(BUILD_DIR)/features/karma_store.o $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o
+$(KARMA_EVENT_TEST): tests/karma_event_test.c $(BUILD_DIR)/features/karma_event.o $(BUILD_DIR)/features/karma_store.o $(BUILD_DIR)/features/karma_bson.o $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o
 	$(CC) -no-pie -o $@ $^ -lsqlite3
 
 $(KARMA_APPLY_TEST): tests/karma_apply_test.c $(BUILD_DIR)/features/karma_apply.o $(BUILD_DIR)/features/karma.o $(BUILD_DIR)/features/karma_record.o
