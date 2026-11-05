@@ -9,7 +9,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Executable entry point with `--version`, `--self-test`, and usage handling.
 - Shared ASCII case-insensitive comparison, bounded comparison, and bounded string length.
 - Explicit-length byte copy and equality primitives.
-- Initial IRC line terminator length primitive (CR, LF, or NUL).
+- IRC line terminator length primitive (CR, LF, or NUL).
+- Explicit-length IRC message parser for tags, prefixes, commands, middle parameters and trailing parameters, with a 15-parameter limit.
 - Minimal logging entry points and a shell smoke-test target.
 - Explicit ABI and string ownership conventions in the repository README.
 
