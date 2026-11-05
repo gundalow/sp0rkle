@@ -23,7 +23,7 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 
 ## Path representation
 
-The adapter treats path as an opaque byte string. A higher-level key-path encoder must serialize each preceding key element unambiguously (for example, fixed-width length prefix followed by element bytes) before calling the store. The final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
+The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
 
 ## Compatibility work still required
 
