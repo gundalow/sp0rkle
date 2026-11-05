@@ -13,7 +13,7 @@ $(TARGET): $(OBJECTS)
 
 $(BUILD_DIR)/%.o: src/%.asm
 	@mkdir -p $(dir $@)
-	$(NASM) -f elf64 -g -F dwarf -Wall -Werror -o $@ $<
+	$(NASM) -f elf64 -g -F dwarf -Wall -Werror -w-reloc-rel-dword -o $@ $<
 
 test: $(TARGET)
 	./$(TARGET) --self-test
