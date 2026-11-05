@@ -45,7 +45,9 @@ int main(void) {
         text, sizeof(text)-1, items, 2, "Alice", 5, 1234,
         lookup, put, NULL, key, sizeof(key), &scratch
     };
-    assert(karma_apply_annotations(&req) == 2);
+    long result = karma_apply_annotations(&req);
+    printf("karma apply returned %ld\n", result);
+    assert(result == 2);
     assert(have_record);
     assert(stored.score == 0 && stored.votes == 2);
     assert(stored.subject_len == 5 && memcmp(stored.subject, "karma", 5) == 0);
