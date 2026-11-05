@@ -20,7 +20,7 @@ int main(void) {
     const struct result w1[] = {{9,1,1},{5,1,-1},{0,1,1}};
     expect(s1, w1, 3);
     const char *s2 = " (a b c)-- d++ ";
-    const struct result w2[] = {{13,1,1},{2,5,-1}};
+    const struct result w2[] = {{11,1,1},{2,5,-1}};
     expect(s2, w2, 2);
     const char *s3 = "some funky karma-- text";
     const struct result w3[] = {{11,5,-1}};
