@@ -23,6 +23,7 @@ struct bson_field { const char *name; uint64_t name_len; uint32_t type; uint32_t
 extern int bson_document_encode(const struct bson_field *, size_t, unsigned char *, size_t, size_t *);
 struct bson_find_result { uint32_t type; uint32_t reserved; const unsigned char *value; uint64_t value_len; };
 extern int bson_find_field(const unsigned char *, size_t, const char *, size_t, struct bson_find_result *);
+extern int bson_decode_scalar(uint32_t, const unsigned char *, size_t, void *, size_t, size_t *);
 
 static uint32_t u32(const unsigned char *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
@@ -114,6 +115,21 @@ int main(void) {
     assert(found.type==0x10 && found.value_len==4 && u32(found.value)==3);
     assert(bson_find_field(generic,generic_len,"missing",7,&found)==0);
     assert(found.type==0 && found.value==NULL && found.value_len==0);
+    char decoded_name[32]; size_t decoded_len=0;
+    assert(bson_find_field(generic,generic_len,"name",4,&found)==1);
+    assert(bson_decode_scalar(found.type,found.value,found.value_len,decoded_name,sizeof(decoded_name),&decoded_len)==0);
+    assert(decoded_len==7 && strcmp(decoded_name,"Sp0rKle")==0);
+    int64_t decoded_integer=0;
+    assert(bson_find_field(generic,generic_len,"score",5,&found)==1);
+    assert(bson_decode_scalar(found.type,found.value,found.value_len,&decoded_integer,sizeof(decoded_integer),&decoded_len)==0);
+    assert(decoded_integer==3 && decoded_len==8);
+    unsigned char nested_copy[8];
+    assert(bson_find_field(generic,generic_len,"child",5,&found)==1);
+    assert(bson_decode_scalar(found.type,found.value,found.value_len,nested_copy,sizeof(nested_copy),&decoded_len)==0);
+    assert(decoded_len==5 && u32(nested_copy)==5);
+    decoded_len=99;
+    assert(bson_decode_scalar(0x02,found.value,found.value_len,decoded_name,1,&decoded_len)==-1);
+    assert(decoded_len==99);
     unsigned char generic_untouched[32]; memset(generic_untouched,0x33,sizeof(generic_untouched));
     size_t generic_old_len=99;
     assert(bson_document_encode(fields,3,generic_untouched,sizeof(generic_untouched),&generic_old_len)==-1);
