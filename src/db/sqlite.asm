@@ -816,7 +816,8 @@ db_store_scan_open:
     mov rdi, r12
     lea rsi, [rel scan_sql]
     mov edx, -1
-    lea r8, [rsp]
+    lea rcx, [rsp]
+    xor r8d, r8d
     call sqlite3_prepare_v2
     test eax, eax
     jnz .scan_open_error
