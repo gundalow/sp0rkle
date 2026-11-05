@@ -356,6 +356,7 @@ db_store_indexed_scan_next:
     jmp .idxscan_error
 
 .idxscan_found:
+    mov r10, [r14 + 48]
     test rbx, rbx
     jz .idxscan_return_row
     mov rax, [rbx]
