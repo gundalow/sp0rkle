@@ -32,8 +32,31 @@ struct bot_irc_command_request {
     size_t out_capacity;
     void **out_handler;
 };
+struct bot_privmsg_context {
+    const char *nick; uint64_t nick_len;
+    const char *target; uint64_t target_len;
+    const char *body; uint64_t body_len;
+    const char *reply_target; uint64_t reply_target_len;
+    uint32_t addressed, reserved;
+};
 extern int bot_irc_privmsg_command_process(
     const struct bot_irc_command_request *);
+extern int bot_irc_privmsg_execute(
+    const struct bot_irc_command_request *, void *);
+
+static int handler_calls;
+static int command_handler(void *opaque,
+                           const struct bot_privmsg_context *ctx,
+                           const char *args, size_t args_len) {
+    (void)opaque;
+    assert(ctx->addressed == 1);
+    assert(ctx->nick_len == 5 && memcmp(ctx->nick, "Alice", 5) == 0);
+    assert(ctx->reply_target_len == 5 &&
+           memcmp(ctx->reply_target, "#room", 5) == 0);
+    assert(args_len == 5 && memcmp(args, "hello", 5) == 0);
+    ++handler_calls;
+    return 73;
+}
 
 static int allow(void *ctx, const char *nick, size_t len) {
     (void)ctx; (void)nick; (void)len;
@@ -56,7 +79,7 @@ int main(void) {
     struct irc_message message;
     setup_message(&message);
     struct bot_line_filter filter = { allow, NULL };
-    struct command_entry command = { "ping", 4, (void *)0x1234, "ping help" };
+    struct command_entry command = { "ping", 4, (void *)command_handler, "ping help" };
     char args[32] = {0};
     void *handler = NULL;
     struct bot_irc_command_request request = {
@@ -66,7 +89,9 @@ int main(void) {
 
     assert(bot_irc_privmsg_command_process(&request) == 1);
     assert(strcmp(args, "hello") == 0);
-    assert(handler == (void *)0x1234);
+    assert(handler == (void *)command_handler);
+    assert(bot_irc_privmsg_execute(&request, NULL) == 73);
+    assert(handler_calls == 1);
 
     filter.should_process = reject;
     strcpy(args, "stale");
