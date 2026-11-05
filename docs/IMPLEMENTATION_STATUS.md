@@ -13,6 +13,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Explicit-length IRC message parser for tags, prefixes, commands, middle parameters and trailing parameters, with a 15-parameter limit.\n- POSIX TCP transport primitives for address resolution/connect, complete-buffer send and bounded CRLF line receive.\n- Initial IRC NICK/USER registration command sender.\n- Blocking session reader that parses incoming frames and automatically answers PING with PONG.\n- Registration completion detection for numeric 001, explicit nickname-in-use reporting for 433, and a channel JOIN sender.\n- C socketpair regression tests for NICK/USER/JOIN wire output, welcome/nickname collision handling, PING/PONG and delivery of the next IRC event.
 - Minimal logging entry points and a shell smoke-test target.
 - Explicit ABI and string ownership conventions in the repository README.
+- ASCII-case-insensitive addressed-message prefix stripping for bot context creation.
+- Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 
 ## Not implemented yet
 
@@ -23,8 +25,8 @@ bot implementation.
    levels.
 2. TCP/TLS IRC transport, registration, message parser/serializer, reconnect,
    multi-server management and event lifecycle.
-3. Context, filters, command registry, longest-prefix dispatch, help, rewrite
-   pipeline and poller lifecycle.
+3. Full context object and event-handler integration, command registry wiring,
+   help, rewrite pipeline and poller lifecycle.
 4. Durable storage, hierarchical key encoding, BSON-compatible records,
    keyed/indexed collections, transactions, fsck, sequences and backups.
 5. Factoids, karma, quotes, seen, URL capture/cache/search, statistics,
