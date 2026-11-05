@@ -41,3 +41,28 @@ The adapter uses the raw PRIVMSG body for factoid detection (not the entire
 IRC frame), matching the command-processing contract. It is byte-oriented
 and inherits the ASCII whitespace/case-folding limits documented in the
 Context and command ABI documents.
+
+
+## Synchronous handler invocation
+
+`bot_irc_privmsg_execute(request, handler_context)` runs the selected handler
+after the pipeline succeeds. The selected command entry's handler field is
+interpreted as a function pointer with this ABI:
+
+```c
+int handler(void *handler_context,
+            const struct bot_privmsg_context *context,
+            const char *normalized_args,
+            size_t normalized_args_len);
+```
+
+The Context structure is the 72-byte structure documented in
+`IRC_CONTEXT_ABI.md`. The adapter rebuilds it and invokes the callback
+synchronously. Both the Context structure and its pointer/length views into
+the original IRC line are valid only until the callback returns. The
+normalized argument buffer remains caller-owned and is also valid during the
+call. The callback's integer return value is propagated by
+`bot_irc_privmsg_execute`; no dispatch returns 0 and invalid state returns
+-1. Handler code must not retain the Context pointer or its string views
+after returning. This callback ABI is the assembly port's explicit
+language-neutral equivalent of the reference `Runner.Run(*Context)`.
