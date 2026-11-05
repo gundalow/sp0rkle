@@ -60,3 +60,11 @@ The GitHub source branch has been populated with NASM source and build scripts.
 Compilation and tests must be run on an x86-64 Linux host with NASM, GCC, and
 Make installed; this remote repository operation cannot itself execute those
 commands.
+
+
+### Context output wrappers
+
+- Added a callback-driven output layer for PRIVMSG, ACTION, and TOPIC.
+- Rewrites are applied only when requested, matching Go: Reply/ReplyN/Do rewrite; explicit Privmsg/Action/Topic bypass the rewrite set.
+- Added a bounded ReplyN prefix builder and a C ABI test for rewriting, bypass behaviour, callback results, and capacity failures.
+- These wrappers are transport-independent; the IRC event loop still needs to resolve Context targets and supply the send callback.
