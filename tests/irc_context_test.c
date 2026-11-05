@@ -15,6 +15,17 @@ struct bot_privmsg_views {
     const char *target; uint64_t target_len;
     const char *text; uint64_t text_len;
 };
+struct bot_privmsg_context {
+    const char *nick; uint64_t nick_len;
+    const char *target; uint64_t target_len;
+    const char *body; uint64_t body_len;
+    const char *reply_target; uint64_t reply_target_len;
+    uint32_t addressed; uint32_t reserved;
+};
+extern int bot_irc_privmsg_context(const char *, size_t,
+                                  const struct irc_message *,
+                                  const char *, size_t,
+                                  struct bot_privmsg_context *);
 extern int bot_irc_privmsg_views(const char *, size_t,
                                  const struct irc_message *,
                                  struct bot_privmsg_views *);
@@ -32,6 +43,16 @@ int main(void) {
     assert(v.nick_len == 5 && memcmp(v.nick, "Alice", 5) == 0);
     assert(v.target_len == 5 && memcmp(v.target, "#room", 5) == 0);
     assert(v.text_len == 10 && memcmp(v.text, "Bot: hello", 10) == 0);
+
+    struct bot_privmsg_context ctx = {0};
+    assert(bot_irc_privmsg_context(line, strlen(line), &m,
+                                   "Bot", 3, &ctx) == 1);
+    assert(ctx.nick_len == 5 && memcmp(ctx.nick, "Alice", 5) == 0);
+    assert(ctx.target_len == 5 && memcmp(ctx.target, "#room", 5) == 0);
+    assert(ctx.body_len == 5 && memcmp(ctx.body, "hello", 5) == 0);
+    assert(ctx.reply_target_len == 5 &&
+           memcmp(ctx.reply_target, "#room", 5) == 0);
+    assert(ctx.addressed == 1);
 
     m.command_length = 4;
     assert(bot_irc_privmsg_views(line, strlen(line), &m, &v) == 0);
