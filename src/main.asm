@@ -10,6 +10,7 @@ extern mem_copy
 extern mem_equal
 extern str_ascii_casecmp
 extern irc_line_length
+extern irc_parse_message
 
 section .text
 version_text: db "sp0rkle-asm 0.1.0-dev (x86-64 Linux, NASM)", 0
@@ -22,6 +23,8 @@ arg_selftest: db "--self-test", 0
 test_irc_line: db "PING :server", 13, 10, 0
 test_upper: db "PRIVMSG", 0
 test_lower: db "privmsg", 0
+test_irc_message: db "@aaa=bbb :nick!u@h PRIVMSG #chan :hello there"
+test_irc_message_len: equ $ - test_irc_message
 
 main:
     push rbp
@@ -66,7 +69,7 @@ main:
 run_selftest:
     push rbp
     mov rbp, rsp
-    sub rsp, 16
+    sub rsp, 176
     lea rdi, [rel test_irc_line]
     call irc_line_length
     cmp rax, 12
@@ -107,6 +110,20 @@ run_selftest:
     call mem_equal
     test eax, eax
     jne .failed
+    lea rdi, [rel test_irc_message]
+    mov esi, test_irc_message_len
+    lea rdx, [rbp - 160]
+    call irc_parse_message
+    test eax, eax
+    jne .failed
+    cmp dword [rbp - 160 + 20], 7
+    jne .failed
+    cmp dword [rbp - 160 + 24], 2
+    jne .failed
+    cmp dword [rbp - 160 + 28], 1
+    jne .failed
+    cmp dword [rbp - 160 + 32 + 8 + 4], 11
+    jne .failed
     lea rdi, [rel selftest_ok]
     call puts
     xor eax, eax
@@ -116,6 +133,6 @@ run_selftest:
     call puts
     mov eax, 1
 .return:
-    add rsp, 16
+    add rsp, 176
     pop rbp
     ret
