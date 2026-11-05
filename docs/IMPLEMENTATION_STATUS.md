@@ -29,6 +29,14 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 - Ordered rewrite callback pipeline with alternating caller-owned buffers and failure propagation.
 
+### Database key primitives
+
+- Added byte-exact encoders for string, uint64, and boolean key elements using the reference unit separator.
+- uint64 values are encoded as fixed-width eight-byte big-endian values; boolean values use 0xff and 0x00.
+- Added key-name validation rejecting the unit separator and capacity checks that leave output untouched on failure.
+- Added C regression tests for exact bytes, binary values, invalid names, and insufficient output capacity.
+- Timestamp and ObjectId key elements can be composed from these primitives; hierarchical bucket storage, sequences, BSON records and transactions are still outstanding.
+
 ### Poller lifecycle
 
 - Added caller-owned poller registry/state and deterministic lifecycle operations.
