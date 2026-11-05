@@ -42,6 +42,7 @@ extern int karma_sqlite_lookup(void *, const char *, size_t, struct karma_record
 static void send_event(struct karma_event_context *ctx, const char *line) {
     struct irc_message m;
     size_t n=strlen(line);
+    while (n && (line[n-1]==13 || line[n-1]==10)) --n;
     assert(irc_parse_message(line,n,&m)==0);
     assert(karma_irc_event_callback(ctx,line,n,&m)>=0);
 }
