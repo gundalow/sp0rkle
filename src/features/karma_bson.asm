@@ -56,9 +56,9 @@ global karma_bson_encode
     mov [rdi], rax
     add rdi, 8
     jmp %%done
-%%done:
 %%name: db %1
 %%namelen equ $ - %%name
+%%done:
 %endmacro
 
 %macro WRITE_DATE 2
@@ -86,6 +86,7 @@ global karma_bson_encode
 ; Returns 0 on success, -1 on invalid pointers or insufficient capacity.
 ; Strings are length-delimited and may contain arbitrary non-NUL bytes.
 karma_bson_encode:
+    cld
     push rbx
     push r12
     push r13
