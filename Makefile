@@ -1,7 +1,7 @@
 NASM ?= nasm
 CC ?= cc
 BUILD_DIR := build
-SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
+SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm src/irc/events.asm src/irc/transport.asm src/bot/commands.asm src/bot/context.asm src/bot/irc_context.asm src/bot/irc_command.asm src/bot/irc_execute.asm src/bot/context_emit.asm src/bot/filters.asm src/bot/rewrite.asm
 OBJECTS := $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/sp0rkle
 TRANSPORT_TEST := $(BUILD_DIR)/transport_test
@@ -28,7 +28,7 @@ $(BUILD_DIR)/%.o: src/%.asm
 $(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
 
-$(IRC_COMMAND_TEST): tests/irc_command_test.c $(BUILD_DIR)/bot/irc_command.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o $(BUILD_DIR)/bot/commands.o $(BUILD_DIR)/bot/filters.o
+$(IRC_COMMAND_TEST): tests/irc_command_test.c $(BUILD_DIR)/bot/irc_command.o $(BUILD_DIR)/bot/irc_execute.o $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o $(BUILD_DIR)/bot/commands.o $(BUILD_DIR)/bot/filters.o
 	$(CC) -no-pie -o $@ $^
 
 $(TRANSPORT_TEST): tests/transport_test.c $(TRANSPORT_TEST_OBJECTS)
