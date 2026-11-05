@@ -9,6 +9,7 @@ global db_store_commit
 global db_store_rollback
 global db_store_put
 global db_store_put_batch
+global db_store_indexed_update
 global db_store_get
 global db_store_delete
 global db_store_sequence_next
@@ -78,6 +79,9 @@ integrity_sql: db "PRAGMA integrity_check", 0
 batch_savepoint_sql: db "SAVEPOINT batch_put", 0
 batch_rollback_sql: db "ROLLBACK TO batch_put", 0
 batch_release_sql: db "RELEASE batch_put", 0
+indexed_savepoint_sql: db "SAVEPOINT indexed_update", 0
+indexed_rollback_sql: db "ROLLBACK TO indexed_update", 0
+indexed_release_sql: db "RELEASE indexed_update", 0
 
 section .text
 ; int db_store_open(path, sqlite_handle_out)
@@ -1349,4 +1353,128 @@ db_store_integrity_check:
     add rsp, 24
     pop r12
     pop rbx
+    ret
+
+; Indexed update request (80 bytes):
+; +0 canonical path ptr, +8 path_len, +16 canonical key ptr, +24 key_len,
+; +32 BSON value ptr, +40 value_len, +48 old index entries ptr, +56 old count,
+; +64 new index entries ptr, +72 new count.
+; Index entry layout is the 48-byte db_store_put_batch entry.
+; int db_store_indexed_update(handle, request)
+; Atomically deletes old index pointers, upserts the canonical value, and
+; inserts all new index pointers. Caller computes old/new indexes from records.
+db_store_indexed_update:
+    push rbp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 56
+    mov r12, rdi
+    mov r13, rsi
+    test r12, r12
+    jz .indexed_error
+    test r13, r13
+    jz .indexed_error
+    mov r14, [r13 + 48]
+    mov r15, [r13 + 56]
+    mov rbx, [r13 + 64]
+    mov rbp, [r13 + 72]
+    test r15, r15
+    jz .indexed_old_ok
+    test r14, r14
+    jz .indexed_error
+.indexed_old_ok:
+    test rbp, rbp
+    jz .indexed_new_ok
+    test rbx, rbx
+    jz .indexed_error
+.indexed_new_ok:
+    mov rdi, r12
+    lea rsi, [rel indexed_savepoint_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .indexed_error
+
+    ; Remove all stale index keys.
+    mov qword [rsp], 0
+.indexed_delete_loop:
+    mov rax, [rsp]
+    cmp rax, r15
+    jae .indexed_put_value
+    imul rax, 48
+    lea rdx, [r14 + rax]
+    mov rdi, r12
+    mov rsi, [rdx]
+    mov rdx, [rdx + 8]
+    mov rcx, [r14 + rax + 16]
+    mov r8, [r14 + rax + 24]
+    call db_store_delete
+    test eax, eax
+    jnz .indexed_rollback
+    inc qword [rsp]
+    jmp .indexed_delete_loop
+
+.indexed_put_value:
+    ; Canonical value is always written before its new index pointers.
+    mov rdi, r12
+    mov rsi, [r13]
+    mov rdx, [r13 + 8]
+    mov rcx, [r13 + 16]
+    mov r8, [r13 + 24]
+    mov r9, [r13 + 32]
+    mov rax, [r13 + 40]
+    mov [rsp + 40], rax
+    call db_store_put
+    test eax, eax
+    jnz .indexed_rollback
+
+    mov qword [rsp], 0
+.indexed_new_loop:
+    mov rax, [rsp]
+    cmp rax, rbp
+    jae .indexed_commit
+    imul rax, 48
+    lea rdx, [rbx + rax]
+    mov rdi, r12
+    mov rsi, [rdx]
+    mov rcx, [rdx + 16]
+    mov r8, [rdx + 24]
+    mov r9, [rdx + 32]
+    mov rax, [rdx + 40]
+    mov [rsp + 40], rax
+    mov rdx, [rdx + 8]
+    call db_store_put
+    test eax, eax
+    jnz .indexed_rollback
+    inc qword [rsp]
+    jmp .indexed_new_loop
+
+.indexed_commit:
+    mov rdi, r12
+    lea rsi, [rel indexed_release_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .indexed_rollback
+    xor eax, eax
+    jmp .indexed_done
+
+.indexed_rollback:
+    mov rdi, r12
+    lea rsi, [rel indexed_rollback_sql]
+    call db_store_exec
+    mov rdi, r12
+    lea rsi, [rel indexed_release_sql]
+    call db_store_exec
+.indexed_error:
+    mov eax, -1
+.indexed_done:
+    add rsp, 56
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
     ret
