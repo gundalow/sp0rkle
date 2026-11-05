@@ -13,6 +13,8 @@ extern int db_store_rollback(void *);
 extern int db_store_put(void *, const void *, size_t, const void *, size_t, const void *, size_t);
 extern int db_store_get(void *, const void *, size_t, const void *, size_t, void *, size_t, size_t *);
 extern int db_store_delete(void *, const void *, size_t, const void *, size_t);
+extern int db_store_sequence_next(void *, const void *, size_t, int64_t *);
+extern int db_store_sequence_set(void *, const void *, size_t, int64_t);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -33,6 +35,12 @@ int main(void) {
     assert(db_store_get(db, path, sizeof(path), key, sizeof(key), out, sizeof(out), &out_len) == 1);
     assert(out_len == sizeof(value));
     assert(memcmp(out, value, sizeof(value)) == 0);
+
+    int64_t sequence = 0;
+    assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 1);
+    assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 2);
+    assert(db_store_sequence_set(db, path, sizeof(path), 41) == 0);
+    assert(db_store_sequence_next(db, path, sizeof(path), &sequence) == 0 && sequence == 42);
 
     assert(db_store_begin(db) == 0);
     const unsigned char transient[] = "rollback";
