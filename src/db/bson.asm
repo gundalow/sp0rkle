@@ -240,6 +240,9 @@ bson_validate_inner:
     ja .invalid
     cmp byte [r8 - 1], 0
     jne .invalid
+    lea r9, [r8 + 5]
+    cmp r9, [rsp]
+    ja .invalid
     mov eax, [r8]               ; embedded scope document length
     cmp eax, 5
     jb .invalid
