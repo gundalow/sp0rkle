@@ -56,6 +56,8 @@ The operation deletes the caller-supplied old index keys, upserts the canonical 
 
 `db_store_indexed_get(handle, request)` resolves a nested index key to its stored ObjectId pointer, then loads the canonical BSON value from the values path. A direct `_id` pointer at the index root bypasses index resolution, matching the reference collection's pointer fast path. Its 104-byte request describes values path, indexes root/path, index key, pointer scratch and BSON output buffers.
 
+`db_store_indexed_scan_next(handle, request)` consumes an index cursor, resolves ObjectId pointers to canonical BSON values, skips stale pointers, and optionally deduplicates through a caller-owned array of 16-byte IDs. It returns 1 for a record, 0 at end, or -1 on error. The 80-byte request carries the cursor, scan descriptor, values path, output buffer, output-length pointer and optional seen-ID storage.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
