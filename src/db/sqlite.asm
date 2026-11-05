@@ -2,6 +2,7 @@ default rel
 
 global db_store_open
 global db_store_close
+global db_store_backup
 global db_store_begin
 global db_store_commit
 global db_store_rollback
@@ -33,6 +34,9 @@ extern sqlite3_column_blob
 extern sqlite3_column_bytes
 extern sqlite3_column_int64
 extern sqlite3_bind_int64
+extern sqlite3_backup_init
+extern sqlite3_backup_step
+extern sqlite3_backup_finish
 
 %define SQLITE_OPEN_READWRITE 0x00000002
 %define SQLITE_OPEN_CREATE    0x00000004
@@ -67,6 +71,7 @@ scan_tree_sql: db "SELECT path,key,value FROM kv WHERE substr(path,1,?1)=?2 ORDE
 savepoint_sql: db "SAVEPOINT bucket_delete", 0
 rollback_savepoint_sql: db "ROLLBACK TO bucket_delete", 0
 release_sql: db "RELEASE bucket_delete", 0
+main_db_name: db "main", 0
 batch_savepoint_sql: db "SAVEPOINT batch_put", 0
 batch_rollback_sql: db "ROLLBACK TO batch_put", 0
 batch_release_sql: db "RELEASE batch_put", 0
@@ -1219,4 +1224,72 @@ db_store_scan_tree_next:
     pop r12
     pop rbx
     pop rbp
+    ret
+
+; int db_store_backup(source_handle, destination_path)
+; Copies a consistent database snapshot using the SQLite online backup API.
+db_store_backup:
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 24
+    mov r12, rdi
+    mov r13, rsi
+    mov qword [rsp], 0
+    mov qword [rsp + 8], 0
+    test r12, r12
+    jz .backup_error
+    test r13, r13
+    jz .backup_error
+    mov rdi, r13
+    lea rsi, [rsp]
+    mov edx, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
+    xor ecx, ecx
+    call sqlite3_open_v2
+    test eax, eax
+    jnz .backup_close
+    mov r14, [rsp]
+    mov rdi, r14
+    lea rsi, [rel main_db_name]
+    mov rdx, r12
+    lea rcx, [rel main_db_name]
+    call sqlite3_backup_init
+    test rax, rax
+    jz .backup_close
+    mov [rsp + 8], rax
+    mov rdi, rax
+    mov esi, -1
+    call sqlite3_backup_step
+    cmp eax, SQLITE_DONE
+    jne .backup_finish_error
+    mov rdi, [rsp + 8]
+    call sqlite3_backup_finish
+    mov qword [rsp + 8], 0
+    test eax, eax
+    jnz .backup_close
+    mov rdi, r14
+    call sqlite3_close
+    test eax, eax
+    jnz .backup_error
+    xor eax, eax
+    jmp .backup_done
+.backup_finish_error:
+    mov rdi, [rsp + 8]
+    call sqlite3_backup_finish
+    mov qword [rsp + 8], 0
+.backup_close:
+    mov rax, [rsp]
+    test rax, rax
+    jz .backup_error
+    mov rdi, rax
+    call sqlite3_close
+.backup_error:
+    mov eax, -1
+.backup_done:
+    add rsp, 24
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
