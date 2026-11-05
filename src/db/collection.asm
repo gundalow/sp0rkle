@@ -10,6 +10,7 @@ extern db_store_delete
 extern db_store_bucket_exists
 extern db_store_bucket_delete
 extern db_store_scan_tree_open
+extern db_store_scan_tree_next
 extern db_store_get
 
 section .text
