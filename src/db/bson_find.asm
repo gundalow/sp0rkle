@@ -246,7 +246,7 @@ bson_decode_scalar:
     cmp r12, 0x04
     je .scalar_document
     cmp r12, 0x0f
-    je .scalar_document
+    je .scalar_raw
     cmp r12, 0x06
     je .scalar_empty
     cmp r12, 0x0a
