@@ -76,3 +76,6 @@ The session layer does not yet handle server registration numerics, nick-in-use
 dispatch. The caller owns the socket and must close it. A returned event's
 buffer remains valid only until the caller reuses that line buffer.
 \nThe `make test` target also runs a C socketpair harness against these assembly interfaces. It checks the exact NICK/USER wire payload and verifies that a PING is answered before the following PRIVMSG is returned to the caller.\n
+| `irc_send_join` | EDI = fd, RSI = NUL-terminated channel | EAX = 0 or -1 | Sends `JOIN <channel>\r\n`. Channel is trusted configuration and must not contain CR/LF. |
+| `irc_session_wait_welcome` | Same arguments as `irc_session_next` | EAX = 1 on numeric 001, 0 on EOF, -1 on I/O/parse error, -2 on numeric 433 | Processes and discards other registration events, while continuing to answer PING, until welcome or nickname collision. The caller decides the nickname retry policy. |
+
