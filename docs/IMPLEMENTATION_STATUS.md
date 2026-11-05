@@ -11,6 +11,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Explicit-length byte copy and equality primitives.
 - IRC line terminator length primitive (CR, LF, or NUL).
 - Explicit-length IRC message parser for tags, prefixes, commands, middle parameters and trailing parameters, with a 15-parameter limit.
+- Ordered IRC event dispatch by case-insensitive command, invoking every matching registered callback with the original line and parsed message.
+- C regression coverage for multiple handlers, case-insensitive matching, null callbacks, no-match dispatch and invalid parsed-message bounds.
 - POSIX TCP transport primitives for address resolution/connect, complete-buffer send and bounded CRLF line receive.
 - Initial IRC NICK/USER registration command sender.
 - Blocking session reader that parses incoming frames and automatically answers PING with PONG.
@@ -68,3 +70,10 @@ commands.
 - Rewrites are applied only when requested, matching Go: Reply/ReplyN/Do rewrite; explicit Privmsg/Action/Topic bypass the rewrite set.
 - Added a bounded ReplyN prefix builder and a C ABI test for rewriting, bypass behaviour, callback results, and capacity failures.
 - These wrappers are transport-independent; the IRC event loop still needs to resolve Context targets and supply the send callback.
+
+### IRC event dispatch
+
+- Added `irc_event_dispatch` to route a parsed message to all registered handlers for its command, preserving registration order and using ASCII-case-insensitive matching.
+- Handler entries are 32 bytes: command pointer, command length, callback pointer, and opaque callback context.
+- Callback ABI is `void callback(ctx, original_line, line_len, parsed_message)`. A null callback is skipped; the return value is the number invoked, or `-1` for invalid top-level arguments or command bounds.
+- This is a deterministic dispatch primitive, not yet the network event loop or multi-server lifecycle.
