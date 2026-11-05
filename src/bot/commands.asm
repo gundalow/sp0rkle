@@ -5,6 +5,7 @@ global bot_command_normalize_args
 global bot_command_dispatch
 global bot_is_factoid_addition
 global bot_command_help_text
+global bot_command_possible
 
 ; struct bot_command_entry (32 bytes):
 ;   +0  const char *prefix
@@ -345,4 +346,166 @@ bot_command_help_text:
     pop r13
     pop r12
     pop rbx
+    ret
+
+
+; ssize_t bot_command_possible(entries, count, text, text_len, out, capacity)
+; Finds prefixes containing any ASCII-whitespace-delimited input word,
+; case-insensitively. Results are prefix pointers in registration order,
+; limited to min(capacity, 10). Returns count, or -1 for invalid output.
+; This mirrors commandSet.possible; Unicode whitespace/case folding are
+; intentionally outside this byte-oriented ABI.
+bot_command_possible:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 88
+
+    mov r12, rdi
+    mov r13d, esi
+    mov r14, rdx
+    mov r15, rcx
+    mov [rbp - 48], r9       ; output capacity
+    mov [rbp - 56], r8       ; output array
+    mov qword [rbp - 64], 0  ; entry index
+    mov qword [rbp - 72], 0  ; result count
+    mov qword [rbp - 128], 0 ; text cursor
+
+    test r9, r9
+    jz .possible_empty
+    test r8, r8
+    jz .possible_error
+
+.entry_loop:
+    mov rax, [rbp - 72]
+    cmp rax, 10
+    jae .possible_done
+    cmp rax, [rbp - 48]
+    jae .possible_done
+    mov eax, [rbp - 64]
+    cmp eax, r13d
+    jae .possible_done
+    mov rax, [rbp - 64]
+    shl rax, 5
+    lea rdx, [r12 + rax]
+    mov [rbp - 80], rdx
+    mov rax, [rdx]
+    mov [rbp - 88], rax
+    mov rax, [rdx + 8]
+    mov [rbp - 96], rax
+    test rax, rax
+    jz .next_entry
+
+.word_loop:
+    mov rax, [rbp - 128]
+.skip_word_space:
+    cmp rax, r15
+    jae .next_entry
+    movzx edx, byte [r14 + rax]
+    cmp dl, ' '
+    je .skip_one_space
+    cmp dl, 9
+    jb .word_start
+    cmp dl, 13
+    jbe .skip_one_space
+    jmp .word_start
+.skip_one_space:
+    inc rax
+    jmp .skip_word_space
+.word_start:
+    mov [rbp - 104], rax
+.word_end:
+    cmp rax, r15
+    jae .word_ready
+    movzx edx, byte [r14 + rax]
+    cmp dl, ' '
+    je .word_ready
+    cmp dl, 9
+    jb .word_continue
+    cmp dl, 13
+    jbe .word_ready
+.word_continue:
+    inc rax
+    jmp .word_end
+.word_ready:
+    mov [rbp - 128], rax
+    mov rdx, rax
+    sub rdx, [rbp - 104]
+    mov [rbp - 112], rdx
+    test rdx, rdx
+    jz .next_entry
+    cmp rdx, [rbp - 96]
+    ja .word_loop
+
+    mov qword [rbp - 120], 0 ; prefix substring offset
+.substring_loop:
+    mov rax, [rbp - 120]
+    mov rdx, [rbp - 96]
+    sub rdx, [rbp - 112]
+    cmp rax, rdx
+    ja .word_loop
+    mov qword [rbp - 124], 0 ; character index
+.compare_word:
+    mov rcx, [rbp - 124]
+    cmp rcx, [rbp - 112]
+    jae .found_possible
+    mov rax, [rbp - 104]
+    add rax, rcx
+    movzx eax, byte [r14 + rax]
+    cmp al, 'A'
+    jb .text_folded
+    cmp al, 'Z'
+    ja .text_folded
+    add al, 32
+.text_folded:
+    mov rdx, [rbp - 120]
+    add rdx, rcx
+    mov rcx, [rbp - 88]
+    movzx edx, byte [rcx + rdx]
+    cmp dl, 'A'
+    jb .prefix_folded
+    cmp dl, 'Z'
+    ja .prefix_folded
+    add dl, 32
+.prefix_folded:
+    cmp al, dl
+    jne .try_next_substring
+    inc qword [rbp - 124]
+    jmp .compare_word
+.try_next_substring:
+    inc qword [rbp - 120]
+    jmp .substring_loop
+
+.found_possible:
+    mov rax, [rbp - 72]
+    mov rcx, [rbp - 56]
+    mov rdx, [rbp - 88]
+    mov [rcx + rax*8], rdx
+    inc qword [rbp - 72]
+    jmp .next_entry
+
+.next_entry:
+    inc qword [rbp - 64]
+    jmp .entry_loop
+
+.possible_empty:
+    xor eax, eax
+    jmp .possible_return
+.possible_done:
+    mov rax, [rbp - 72]
+    jmp .possible_return
+.possible_error:
+    mov rax, -1
+.possible_return:
+    add rsp, 88
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
     ret
