@@ -63,7 +63,6 @@ main:
 run_selftest:
     push rbp
     mov rbp, rsp
-    push rbx
     lea rdi, [test_irc_line]
     call irc_line_length
     cmp rax, 12
@@ -86,6 +85,5 @@ run_selftest:
     call puts
     mov eax, 1
 .return:
-    pop rbx
     pop rbp
     ret
