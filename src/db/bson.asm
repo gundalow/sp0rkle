@@ -312,6 +312,9 @@ bson_document_encode:
     imul rax, 40
     jo .encode_doc_error
     lea r9, [r12 + rax]
+    mov eax, [r9 + 16]
+    cmp eax, 255
+    ja .encode_doc_error
     mov rsi, [r9]
     test rsi, rsi
     jz .encode_doc_error
