@@ -1,7 +1,9 @@
 default rel
 
 global irc_event_dispatch
+global irc_session_dispatch_next
 extern str_ascii_casecmp_n
+extern irc_session_next
 
 ; int64_t irc_event_dispatch(const struct irc_event_handler *entries,
 ;     uint64_t count, const char *line, uint64_t line_len,
@@ -108,6 +110,54 @@ irc_event_dispatch:
 .invalid:
     mov rax, -1
 .return:
+    add rsp, 24
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+
+; int64_t irc_session_dispatch_next(fd, line, capacity, message,
+;                                   handlers, handler_count)
+; Receives and parses the next non-PING event, then dispatches it. Returns
+; 0 for EOF, -1 for transport/parse/argument failure, or the number of
+; callbacks invoked (zero is a valid event with no registered handler).
+irc_session_dispatch_next:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 24
+
+    mov r12d, edi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    mov rbx, r8
+    mov [rbp - 48], r9
+
+    mov edi, r12d
+    mov rsi, r13
+    mov rdx, r14
+    mov rcx, r15
+    call irc_session_next
+    test eax, eax
+    jle .dispatch_return
+    mov [rbp - 56], rax
+
+    mov rdi, rbx
+    mov rsi, [rbp - 48]
+    mov rdx, r13
+    mov rcx, [rbp - 56]
+    mov r8, r15
+    call irc_event_dispatch
+.dispatch_return:
     add rsp, 24
     pop r15
     pop r14
