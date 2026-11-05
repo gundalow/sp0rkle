@@ -171,8 +171,9 @@ irc_tcp_recv_line:
     inc rbx
     jmp .recv_loop
 .line_end:
+    ; Empty frames are not valid IRC messages; reserve zero for clean EOF.
     test rbx, rbx
-    jz .terminate
+    jz .recv_error
     cmp byte [r13 + rbx - 1], 13
     jne .terminate
     dec rbx
