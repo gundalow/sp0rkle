@@ -1,0 +1,24 @@
+name: Build and test
+
+on:
+  push:
+    branches:
+      - feat-asm
+  pull_request:
+    branches:
+      - feat-asm
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes make nasm
+
+      - name: Build, test, and show version
+        run: make ; make test && ./build/sp0rkle --version
