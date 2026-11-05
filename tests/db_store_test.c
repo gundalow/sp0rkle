@@ -19,6 +19,9 @@ extern int db_store_bucket_ensure(void *, const void *, size_t);
 extern int db_store_bucket_exists(void *, const void *, size_t);
 extern int db_store_bucket_delete(void *, const void *, size_t);
 extern long db_key_path_append(const unsigned char *, size_t, const unsigned char *, size_t, unsigned char *, size_t);
+extern int db_store_scan_open(void *, const void *, size_t, void **);
+extern int db_store_scan_next(void *, void *, size_t, size_t *, void *, size_t, size_t *);
+extern int db_store_scan_close(void *);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -50,6 +53,20 @@ int main(void) {
     assert(db_store_bucket_exists(db, parent_name, sizeof(parent_name)) == 0);
     assert(db_store_bucket_exists(db, child_path, 16) == 0);
     assert(db_store_get(db, child_path, 16, "nested", 6, out, sizeof(out), &out_len) == 0);
+    const unsigned char scan_path[] = {0x44};
+    assert(db_store_put(db, scan_path, sizeof(scan_path), "b", 1, "B", 1) == 0);
+    assert(db_store_put(db, scan_path, sizeof(scan_path), "a", 1, "A", 1) == 0);
+    void *cursor = NULL;
+    assert(db_store_scan_open(db, scan_path, sizeof(scan_path), &cursor) == 0);
+    unsigned char scan_key[8] = {0}, scan_value[8] = {0};
+    size_t scan_key_len = 0, scan_value_len = 0;
+    assert(db_store_scan_next(cursor, scan_key, sizeof(scan_key), &scan_key_len, scan_value, sizeof(scan_value), &scan_value_len) == 1);
+    assert(scan_key_len == 1 && scan_value_len == 1 && scan_key[0] == 'a' && scan_value[0] == 'A');
+    assert(db_store_scan_next(cursor, scan_key, sizeof(scan_key), &scan_key_len, scan_value, sizeof(scan_value), &scan_value_len) == 1);
+    assert(scan_key_len == 1 && scan_value_len == 1 && scan_key[0] == 'b' && scan_value[0] == 'B');
+    assert(db_store_scan_next(cursor, scan_key, sizeof(scan_key), &scan_key_len, scan_value, sizeof(scan_value), &scan_value_len) == 0);
+    assert(db_store_scan_close(cursor) == 0);
+
     assert(db_store_put(db, path, sizeof(path), key, sizeof(key), value, sizeof(value)) == 0);
     assert(db_store_get(db, path, sizeof(path), key, sizeof(key), out, sizeof(out), &out_len) == 1);
     assert(out_len == sizeof(value));
