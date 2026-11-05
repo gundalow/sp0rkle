@@ -29,6 +29,13 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 - Ordered rewrite callback pipeline with alternating caller-owned buffers and failure propagation.
 
+### IRC PRIVMSG command pipeline
+
+- Added `bot_irc_privmsg_command_process`, which composes parsed user PRIVMSG extraction, Context preparation, raw-body factoid detection, nick filtering, addressed gating, longest-prefix command matching and argument normalization.
+- Added a C integration test covering a channel message through successful dispatch, filter rejection/output clearing, and factoid-addition bypass.
+- Added `docs/IRC_COMMAND_ABI.md` and wired the assembly module and regression test into the Makefile.
+- The adapter returns the opaque handler pointer; actual handler invocation and domain-specific command implementations remain outstanding.
+
 ### IRC PRIVMSG Context adapter
 
 - Added `bot_irc_privmsg_views` to validate a parsed user-originated PRIVMSG and expose sender nick, target, and body as pointer/length views into the original line.
