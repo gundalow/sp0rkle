@@ -10,6 +10,7 @@ global db_store_rollback
 global db_store_put
 global db_store_put_batch
 global db_store_indexed_update
+global db_store_indexed_delete
 global db_store_get
 global db_store_delete
 global db_store_sequence_next
@@ -82,6 +83,9 @@ batch_release_sql: db "RELEASE batch_put", 0
 indexed_savepoint_sql: db "SAVEPOINT indexed_update", 0
 indexed_rollback_sql: db "ROLLBACK TO indexed_update", 0
 indexed_release_sql: db "RELEASE indexed_update", 0
+indexed_delete_savepoint_sql: db "SAVEPOINT indexed_delete", 0
+indexed_delete_rollback_sql: db "ROLLBACK TO indexed_delete", 0
+indexed_delete_release_sql: db "RELEASE indexed_delete", 0
 
 section .text
 ; int db_store_open(path, sqlite_handle_out)
@@ -1515,6 +1519,106 @@ db_store_indexed_update:
     mov eax, -1
 .indexed_done:
     add rsp, 56
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+; Indexed delete request (56 bytes):
+; +0 canonical value path ptr, +8 path_len, +16 canonical key ptr,
+; +24 key_len, +32 old index entries ptr, +40 old count.
+; int db_store_indexed_delete(handle, request)
+; Atomically removes every supplied index key and the canonical value.
+db_store_indexed_delete:
+    push rbp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 40
+    mov r12, rdi
+    mov r13, rsi
+    test r12, r12
+    jz .indexed_del_error
+    test r13, r13
+    jz .indexed_del_error
+    cmp qword [r13], 0
+    je .indexed_del_error
+    cmp qword [r13 + 16], 0
+    je .indexed_del_error
+    mov r14, [r13 + 32]
+    mov r15, [r13 + 40]
+    test r15, r15
+    jz .indexed_del_preflight_done
+    test r14, r14
+    jz .indexed_del_error
+    xor ebx, ebx
+.indexed_del_preflight:
+    cmp rbx, r15
+    jae .indexed_del_preflight_done
+    mov rax, rbx
+    imul rax, 48
+    lea rdx, [r14 + rax]
+    cmp qword [rdx], 0
+    je .indexed_del_error
+    cmp qword [rdx + 16], 0
+    je .indexed_del_error
+    inc rbx
+    jmp .indexed_del_preflight
+.indexed_del_preflight_done:
+    mov rdi, r12
+    lea rsi, [rel indexed_delete_savepoint_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .indexed_del_error
+    mov qword [rsp], 0
+.indexed_del_loop:
+    mov rax, [rsp]
+    cmp rax, r15
+    jae .indexed_del_value
+    imul rax, 48
+    lea rdx, [r14 + rax]
+    mov rdi, r12
+    mov rsi, [rdx]
+    mov rdx, [rdx + 8]
+    mov rcx, [r14 + rax + 16]
+    mov r8, [r14 + rax + 24]
+    call db_store_delete
+    test eax, eax
+    jnz .indexed_del_rollback
+    inc qword [rsp]
+    jmp .indexed_del_loop
+.indexed_del_value:
+    mov rdi, r12
+    mov rsi, [r13]
+    mov rdx, [r13 + 8]
+    mov rcx, [r13 + 16]
+    mov r8, [r13 + 24]
+    call db_store_delete
+    test eax, eax
+    jnz .indexed_del_rollback
+    mov rdi, r12
+    lea rsi, [rel indexed_delete_release_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .indexed_del_rollback
+    xor eax, eax
+    jmp .indexed_del_done
+.indexed_del_rollback:
+    mov rdi, r12
+    lea rsi, [rel indexed_delete_rollback_sql]
+    call db_store_exec
+    mov rdi, r12
+    lea rsi, [rel indexed_delete_release_sql]
+    call db_store_exec
+.indexed_del_error:
+    mov eax, -1
+.indexed_del_done:
+    add rsp, 40
     pop r15
     pop r14
     pop r13
