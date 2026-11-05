@@ -20,7 +20,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Explicit ABI and string ownership conventions in the repository README.
 - ASCII-case-insensitive addressed-message prefix stripping and complete PRIVMSG text/addressed-state preparation.
 - Command argument normalization that trims and compresses ASCII whitespace.
-- Command-dispatch orchestration for addressed gating, factoid bypass, longest-prefix handler selection and normalized arguments.
+- Filtered command-processing entry point combining the nick/filter pipeline with addressed gating, factoid bypass, longest-prefix selection and normalized arguments.
 - Reference-compatible factoid-addition detection for `:is` and `:=` markers.
 - Longest-prefix command help-string lookup and up-to-ten candidate suggestions.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
