@@ -7,7 +7,8 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Branch-specific assembly build using NASM ELF64 objects and the system C
   linker/runtime.
 - Executable entry point with `--version`, `--self-test`, and usage handling.
-- Shared ASCII case-insensitive comparison and NUL-terminated string length.
+- Shared ASCII case-insensitive comparison, bounded comparison, and bounded string length.
+- Explicit-length byte copy and equality primitives.
 - Initial IRC line terminator length primitive (CR, LF, or NUL).
 - Minimal logging entry points and a shell smoke-test target.
 - Explicit ABI and string ownership conventions in the repository README.
