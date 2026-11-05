@@ -20,6 +20,8 @@ struct emit_request {
     uint32_t reserved[3];
 };
 extern int bot_context_emit(const struct emit_request *);
+struct string_view { const char *ptr; size_t len; };
+extern struct string_view bot_context_resolve_target(const char *, size_t, const char *, size_t);
 extern size_t bot_context_prefix_nick(const char *, size_t, const char *, size_t,
                                       char *, size_t);
 
@@ -40,6 +42,12 @@ static ssize_t upper(void *ctx, const char *in, size_t n, char *out, size_t cap)
     return (ssize_t)n;
 }
 int main(void) {
+    struct string_view view = bot_context_resolve_target("#channel", 8, "alice", 5);
+    assert(view.len == 8 && memcmp(view.ptr, "#channel", 8) == 0);
+    view = bot_context_resolve_target("sp0rkle", 7, "alice", 5);
+    assert(view.len == 5 && memcmp(view.ptr, "alice", 5) == 0);
+    view = bot_context_resolve_target("&local", 6, "bob", 3);
+    assert(view.len == 6 && memcmp(view.ptr, "&local", 6) == 0);
     struct capture c = {0};
     char a[128], b[128], prefixed[128];
     struct { void *fn; void *ctx; } rw = {(void *)upper, NULL};
