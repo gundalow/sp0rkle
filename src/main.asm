@@ -25,6 +25,10 @@ test_upper: db "PRIVMSG", 0
 test_lower: db "privmsg", 0
 test_irc_message: db "@aaa=bbb :nick!u@h PRIVMSG #chan :hello there"
 test_irc_message_len: equ $ - test_irc_message
+test_numeric_message: db ":server 001 nick :Welcome"
+test_numeric_message_len: equ $ - test_numeric_message
+test_bad_irc_message: db "PING", 13
+test_bad_irc_message_len: equ $ - test_bad_irc_message
 
 main:
     push rbp
@@ -123,6 +127,22 @@ run_selftest:
     cmp dword [rbp - 160 + 28], 1
     jne .failed
     cmp dword [rbp - 160 + 32 + 8 + 4], 11
+    jne .failed
+    lea rdi, [rel test_numeric_message]
+    mov esi, test_numeric_message_len
+    lea rdx, [rbp - 160]
+    call irc_parse_message
+    test eax, eax
+    jne .failed
+    cmp dword [rbp - 160 + 20], 3
+    jne .failed
+    cmp dword [rbp - 160 + 24], 2
+    jne .failed
+    lea rdi, [rel test_bad_irc_message]
+    mov esi, test_bad_irc_message_len
+    lea rdx, [rbp - 160]
+    call irc_parse_message
+    cmp eax, -1
     jne .failed
     lea rdi, [rel selftest_ok]
     call puts
