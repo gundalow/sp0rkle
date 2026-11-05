@@ -181,7 +181,7 @@ irc_parse_message:
 .alpha_scan:
     cmp rcx, r11
     jae .command_done
-    mov al, [r12 + r10 + rcx]
+    mov al, [r9 + rcx]
     cmp al, 'A'
     jb .alpha_lower
     cmp al, 'Z'
