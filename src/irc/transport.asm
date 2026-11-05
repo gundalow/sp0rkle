@@ -195,3 +195,163 @@ irc_tcp_recv_line:
     pop rbx
     pop rbp
     ret
+
+; int irc_send_registration(int fd, const char *nick, const char *user,
+;                           const char *realname)
+; Sends the initial NICK and USER commands. Identity strings are trusted
+; configuration values and must not contain CR or LF.
+global irc_send_registration
+extern snprintf
+extern irc_tcp_send_all
+
+section .rodata
+registration_format: db "NICK %s", 13, 10, "USER %s 0 * :%s", 13, 10, 0
+ping_command: db "PING", 0
+pong_prefix: db "PONG :", 0
+
+section .text
+irc_send_registration:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 1040
+
+    mov r12d, edi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+
+    mov rdi, rsp
+    mov esi, 1024
+    lea rdx, [rel registration_format]
+    mov rcx, r13
+    mov r8, r14
+    mov r9, r15
+    xor eax, eax
+    call snprintf
+    test eax, eax
+    js .registration_error
+    cmp eax, 1024
+    jae .registration_error
+    mov ebx, eax
+    mov edi, r12d
+    mov rsi, rsp
+    mov rdx, rbx
+    call irc_tcp_send_all
+    jmp .registration_return
+.registration_error:
+    mov eax, -1
+.registration_return:
+    add rsp, 1040
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
+
+; int irc_session_next(int fd, char *line, size_t capacity,
+;                      struct irc_message *out)
+; Blocks until a non-PING IRC message arrives, clean EOF occurs, or an error
+; occurs. Automatically answers PING with PONG using the first parameter.
+; Returns 1 for an event, 0 for clean EOF, and -1 for malformed input/I/O.
+global irc_session_next
+extern irc_tcp_recv_line
+extern irc_parse_message
+extern irc_tcp_send_all
+extern str_ascii_casecmp_n
+extern mem_copy
+
+irc_session_next:
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 552
+
+    mov r12d, edi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+
+.next_line:
+    mov edi, r12d
+    mov rsi, r13
+    mov rdx, r14
+    call irc_tcp_recv_line
+    test rax, rax
+    jz .session_eof
+    js .session_error
+    mov ebx, eax
+
+    mov rdi, r13
+    mov rsi, rbx
+    mov rdx, r15
+    call irc_parse_message
+    test eax, eax
+    jnz .session_error
+
+    cmp dword [r15 + 20], 4
+    jne .return_event
+    mov rdi, r13
+    mov esi, [r15 + 16]
+    add rdi, rsi
+    lea rsi, [rel ping_command]
+    mov edx, 4
+    call str_ascii_casecmp_n
+    test eax, eax
+    jnz .return_event
+
+    ; PING must carry at least one parameter.
+    cmp dword [r15 + 24], 1
+    jb .session_error
+    mov eax, [r15 + 32]         ; first parameter offset
+    mov edx, [r15 + 36]         ; first parameter length
+    cmp edx, 504                ; PONG + token + CRLF <= 512 bytes
+    ja .session_error
+    mov r8d, edx                ; preserve token length
+
+    mov rdi, rsp
+    lea rsi, [rel pong_prefix]
+    mov edx, 6
+    call mem_copy
+
+    mov eax, [r15 + 32]
+    lea rdi, [rsp + 6]
+    lea rsi, [r13 + rax]
+    mov edx, r8d
+    call mem_copy
+
+    mov byte [rsp + 6 + r8], 13
+    mov byte [rsp + 7 + r8], 10
+    lea rdx, [r8 + 8]
+    mov edi, r12d
+    mov rsi, rsp
+    call irc_tcp_send_all
+    test eax, eax
+    jnz .session_error
+    jmp .next_line
+
+.return_event:
+    mov eax, 1
+    jmp .session_return
+.session_eof:
+    xor eax, eax
+    jmp .session_return
+.session_error:
+    mov eax, -1
+.session_return:
+    add rsp, 552
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
