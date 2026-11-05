@@ -78,3 +78,13 @@ line-filter pipeline before invoking it.
 
 The caller is responsible for evaluating factoid-addition syntax against the
 unmodified IRC line text before calling dispatch.
+
+
+## Factoid-addition detector
+
+`bot_is_factoid_addition(text, text_len)` returns 1 when the explicit-length
+text contains either `:is` or `:=`, using ASCII case-insensitive matching,
+and 0 otherwise. This mirrors the reference `util.IsFactoidAddition`
+predicate. Call it with the original IRC line text, before context text is
+trimmed or the addressed nickname is removed. Pass its result as the
+`factoid_addition` argument to `bot_command_dispatch`.
