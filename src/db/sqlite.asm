@@ -479,9 +479,11 @@ db_store_sequence_set:
     push rbx
     push r12
     push r13
-    sub rsp, 16
+    push r14
+    sub rsp, 24
     mov r12, rdi
     mov r13, rsi
+    mov r14, rdx
     mov rbx, rcx
     mov qword [rsp], 0
     test r12, r12
@@ -499,12 +501,7 @@ db_store_sequence_set:
     mov rdi, [rsp]
     mov esi, 1
     mov rdx, r13
-    mov rcx, rdx
-    ; The path length is the third argument and is preserved in rdx only
-    ; after saving it below; reload from the caller's original stack frame.
-    mov rcx, rdx
-    mov rdx, r13
-    mov rcx, [rsp + 8]
+    mov rcx, r14
     mov r8, SQLITE_TRANSIENT
     call sqlite3_bind_blob
     test eax, eax
@@ -531,7 +528,8 @@ db_store_sequence_set:
 .seq_set_error:
     mov eax, -1
 .seq_set_done:
-    add rsp, 16
+    add rsp, 24
+    pop r14
     pop r13
     pop r12
     pop rbx
