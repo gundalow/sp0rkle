@@ -68,19 +68,18 @@ bot_rewrite_apply:
 .invoke:
     test r8, r8
     jz .rewrite_error
-    mov [rbp - 88], r8      ; selected output buffer
-    mov rdi, [rbp - 96]
-    mov rsi, r14
-    mov rdx, r15
-    mov rcx, r8
-    mov r8, [rbp - 56]
-    mov rax, [rbp - 88]
-    ; callback pointer is kept separately below
+    mov [rbp - 88], r8          ; selected output buffer
+    mov rdi, [rbp - 104]        ; callback context
+    mov rsi, r14                ; current input
+    mov rdx, r15                ; current length
+    mov rcx, [rbp - 88]         ; output buffer
+    mov r8, [rbp - 56]          ; output capacity
+    mov rax, [rbp - 96]         ; callback
+    call rax
     test rax, rax
     js .rewrite_error
     cmp rax, [rbp - 56]
     jae .rewrite_error
-    ; callback output is NUL-terminated by this wrapper.
     mov rdx, [rbp - 88]
     mov byte [rdx + rax], 0
     mov r14, rdx
