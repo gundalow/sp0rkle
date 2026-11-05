@@ -2,6 +2,39 @@ default rel
 
 global bot_context_emit
 global bot_context_prefix_nick
+
+global bot_context_resolve_target
+
+; struct bot_string_view { const char *ptr; size_t len; }
+; bot_context_resolve_target(target,target_len,nick,nick_len)
+; Mirrors goirc Line.Target(): channel targets (# & + !) remain the target;
+; direct messages are replied to the sender nick.
+bot_context_resolve_target:
+    test rdi, rdi
+    jz .target_empty
+    test rsi, rsi
+    jz .target_private
+    mov al, [rdi]
+    cmp al, '#'
+    je .target_public
+    cmp al, '&'
+    je .target_public
+    cmp al, '+'
+    je .target_public
+    cmp al, '!'
+    je .target_public
+.target_private:
+    mov rax, rdx
+    mov rdx, rcx
+    ret
+.target_public:
+    mov rax, rdi
+    mov rdx, rsi
+    ret
+.target_empty:
+    mov rax, rdx
+    mov rdx, rcx
+    ret
 extern bot_rewrite_apply
 
 ; struct bot_emit_request (112 bytes):
