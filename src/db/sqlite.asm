@@ -1398,9 +1398,9 @@ db_store_indexed_update:
     jnz .indexed_error
 
     ; Remove all stale index keys.
-    mov qword [rsp], 0
+    mov qword [rsp + 8], 0
 .indexed_delete_loop:
-    mov rax, [rsp]
+    mov rax, [rsp + 8]
     cmp rax, r15
     jae .indexed_put_value
     imul rax, 48
@@ -1413,7 +1413,7 @@ db_store_indexed_update:
     call db_store_delete
     test eax, eax
     jnz .indexed_rollback
-    inc qword [rsp]
+    inc qword [rsp + 8]
     jmp .indexed_delete_loop
 
 .indexed_put_value:
@@ -1425,14 +1425,14 @@ db_store_indexed_update:
     mov r8, [r13 + 24]
     mov r9, [r13 + 32]
     mov rax, [r13 + 40]
-    mov [rsp + 40], rax
+    mov [rsp], rax
     call db_store_put
     test eax, eax
     jnz .indexed_rollback
 
-    mov qword [rsp], 0
+    mov qword [rsp + 8], 0
 .indexed_new_loop:
-    mov rax, [rsp]
+    mov rax, [rsp + 8]
     cmp rax, rbp
     jae .indexed_commit
     imul rax, 48
@@ -1443,12 +1443,12 @@ db_store_indexed_update:
     mov r8, [rdx + 24]
     mov r9, [rdx + 32]
     mov rax, [rdx + 40]
-    mov [rsp + 40], rax
+    mov [rsp], rax
     mov rdx, [rdx + 8]
     call db_store_put
     test eax, eax
     jnz .indexed_rollback
-    inc qword [rsp]
+    inc qword [rsp + 8]
     jmp .indexed_new_loop
 
 .indexed_commit:
