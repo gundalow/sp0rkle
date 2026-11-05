@@ -15,7 +15,7 @@ extern irc_parse_message
 section .text
 version_text: db "sp0rkle-asm 0.1.0-dev (x86-64 Linux, NASM)", 0
 usage_text: db "Usage: sp0rkle [--version|--self-test]", 0
-startup_text: db "sp0rkle assembly port scaffold: IRC and feature runtime not yet implemented.", 0
+startup_text: db "sp0rkle assembly runtime primitives available; application bootstrap and persistent features remain under development.", 0
 selftest_ok: db "self-test: PASS", 0
 selftest_fail: db "self-test: FAIL", 0
 arg_version: db "--version", 0
