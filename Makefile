@@ -23,7 +23,7 @@ $(BUILD_DIR)/%.o: src/%.asm
 $(TRANSPORT_TEST): tests/transport_test.c $(TRANSPORT_TEST_OBJECTS)
 	$(CC) -no-pie -o $@ $^
 
-$(COMMAND_TEST): tests/command_test.c $(BUILD_DIR)/bot/commands.o
+$(COMMAND_TEST): tests/command_test.c $(BUILD_DIR)/bot/commands.o $(BUILD_DIR)/bot/filters.o
 	$(CC) -no-pie -o $@ $^
 
 $(CONTEXT_TEST): tests/context_test.c $(BUILD_DIR)/bot/context.o
