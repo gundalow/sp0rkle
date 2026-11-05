@@ -29,6 +29,8 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 - db_store_scan_next(statement, key_out, key_capacity, key_len_out, value_out, value_capacity, value_len_out): copies the next row into caller buffers and returns 1 for a row, 0 at end, or -1 on error/capacity failure.
 - db_store_scan_close(statement): finalizes the cursor.
 
+- db_store_put_batch(handle, entries, count): atomically upserts a batch of 48-byte entries (path pointer/length, key pointer/length, value pointer/length). It uses a SQLite savepoint, so it composes with an outer transaction. Any invalid entry rolls back the entire batch.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
