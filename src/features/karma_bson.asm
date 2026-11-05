@@ -194,8 +194,7 @@ karma_bson_encode:
 ; +72 downvoter buffer, +80 downvoter capacity.
 ;
 ; int karma_bson_decode(request)
-; Accepts the exact reference karma document field order and BSON kinds.
-; Returns 0 or -1. Destination strings are NUL-terminated.
+; Decodes the exact field order emitted by karma_bson_encode and the Go struct.
 %macro EXPECT_FIELD 2
     cmp rbx, r11
     jae .decode_error
@@ -205,41 +204,89 @@ karma_bson_encode:
     jne .decode_error
     lea rsi, [rel %%name]
     xor ecx, ecx
-%%name_loop:
+%%compare:
+    lea rdx, [rbx + rcx]
+    cmp rdx, r11
+    jae .decode_error
     mov al, [rbx + rcx]
     cmp al, [rsi + rcx]
     jne .decode_error
     test al, al
-    jz %%name_done
+    jz %%matched
     inc ecx
-    jmp %%name_loop
-%%name_done:
+    jmp %%compare
+%%matched:
     add rbx, rcx
     inc rbx
+    jmp %%skip
 %%name: db %1, 0
+%%skip:
 %endmacro
 
-%macro COPY_BSON_STRING 4
+%macro EXPECT_INT_FIELD 1
+    cmp rbx, r11
+    jae .decode_error
+    movzx r8d, byte [rbx]
+    inc rbx
+    cmp r8b, 0x10
+    je %%type_ok
+    cmp r8b, 0x12
+    jne .decode_error
+%%type_ok:
+    lea rsi, [rel %%name]
+    xor ecx, ecx
+%%compare:
+    lea rdx, [rbx + rcx]
+    cmp rdx, r11
+    jae .decode_error
+    mov al, [rbx + rcx]
+    cmp al, [rsi + rcx]
+    jne .decode_error
+    test al, al
+    jz %%matched
+    inc ecx
+    jmp %%compare
+%%matched:
+    add rbx, rcx
+    inc rbx
+    jmp %%skip
+%%name: db %1, 0
+%%skip:
+%endmacro
+
+%macro COPY_STRING 3
+    ; %1 = record pointer offset, %2 = record length offset,
+    ; %3 = request buffer pointer offset; capacity is %3 + 8.
+    cmp rbx, r11
+    jae .decode_error
     mov eax, [rbx]
     cmp eax, 1
     jb .decode_error
-    mov edx, eax
-    dec edx
-    mov rdi, [r12 + %2]
-    test rdi, rdi
-    jz .decode_error
-    mov rcx, [r12 + %3]
+    mov r10d, eax
+    dec r10
+    lea rdx, [rbx + 4]
     mov rax, rdx
+    add rax, r10
     inc rax
-    cmp rcx, rax
+    cmp rax, r11
+    ja .decode_error
+    cmp byte [rax - 1], 0
+    jne .decode_error
+    mov r9, [r12 + %3]
+    test r9, r9
+    jz .decode_error
+    mov rax, [r12 + %3 + 8]
+    mov rcx, r10
+    inc rcx
+    cmp rax, rcx
     jb .decode_error
-    lea rsi, [rbx + 4]
-    mov rcx, rdx
+    mov rdi, r9
+    mov rsi, rdx
+    mov rcx, r10
     rep movsb
     mov byte [rdi], 0
-    mov rax, [r12 + %4]
-    mov [r15 + %1], rax
-    mov [r15 + %1 + 8], rdx
+    mov [r15 + %1], r9
+    mov [r15 + %2], r10
     mov eax, [rbx]
     add rbx, 4
     add rbx, rax
@@ -266,6 +313,8 @@ karma_bson_decode:
     jz .decode_error
     cmp r14, 5
     jb .decode_error
+    cmp r14, 0x7fffffff
+    ja .decode_error
     mov eax, [r13]
     cmp rax, r14
     jne .decode_error
@@ -275,106 +324,79 @@ karma_bson_decode:
     lea r11, [r13 + r14 - 1]
 
     EXPECT_FIELD "subject", 0x02
-    COPY_BSON_STRING 0, 24, 32, 24
+    COPY_STRING 0, 8, 24
 
     EXPECT_FIELD "key", 0x02
-    ; key buffer is separate; the record's key pointer is at +16.
-    mov eax, [rbx]
-    cmp eax, 1
-    jb .decode_error
-    mov edx, eax
-    dec edx
-    mov rdi, [r12 + 40]
-    test rdi, rdi
-    jz .decode_error
-    mov rcx, [r12 + 48]
-    mov rax, rdx
-    inc rax
-    cmp rcx, rax
-    jb .decode_error
-    lea rsi, [rbx + 4]
-    mov rcx, rdx
-    rep movsb
-    mov byte [rdi], 0
-    mov rax, [r12 + 40]
-    mov [r15 + 16], rax
-    mov eax, [rbx]
-    add rbx, 4
-    add rbx, rax
+    COPY_STRING 16, 0, 40
 
-    ; score: BSON int32 or int64.
-    cmp rbx, r11
-    jae .decode_error
-    movzx r8d, byte [rbx]
-    inc rbx
+    EXPECT_INT_FIELD "score"
     cmp r8b, 0x10
-    je .score_i32
-    cmp r8b, 0x12
-    jne .decode_error
-    cmp rbx, r11
+    je .decode_score_i32
+    lea rax, [rbx + 8]
+    cmp rax, r11
     ja .decode_error
     mov rax, [rbx]
     add rbx, 8
-    jmp .score_name
-.score_i32:
+    jmp .decode_score_store
+.decode_score_i32:
+    lea rax, [rbx + 4]
+    cmp rax, r11
+    ja .decode_error
     movsxd rax, dword [rbx]
     add rbx, 4
-.score_name:
-    lea rsi, [rel score_name]
-    xor ecx, ecx
-.score_name_loop:
-    mov dl, [rbx - rcx - 1]
-    ; The field name was already traversed by the generic scanner below;
-    ; this label is intentionally unreachable.
-    inc ecx
-    cmp ecx, 6
-    jb .score_name_loop
+.decode_score_store:
     mov [r15 + 24], rax
 
-    ; votes: BSON int32 or int64, must be non-negative.
-    cmp rbx, r11
-    jae .decode_error
-    movzx r8d, byte [rbx]
-    inc rbx
+    EXPECT_INT_FIELD "votes"
     cmp r8b, 0x10
-    je .votes_i32
-    cmp r8b, 0x12
-    jne .decode_error
+    je .decode_votes_i32
+    lea rdx, [rbx + 8]
+    cmp rdx, r11
+    ja .decode_error
     mov rax, [rbx]
     add rbx, 8
-    jmp .votes_done
-.votes_i32:
+    jmp .decode_votes_store
+.decode_votes_i32:
+    lea rdx, [rbx + 4]
+    cmp rdx, r11
+    ja .decode_error
     movsxd rax, dword [rbx]
     add rbx, 4
-.votes_done:
+.decode_votes_store:
     test rax, rax
     js .decode_error
     mov [r15 + 32], rax
 
     EXPECT_FIELD "upvoter", 0x02
-    COPY_BSON_STRING 40, 56, 64, 56
+    COPY_STRING 40, 48, 56
 
     EXPECT_FIELD "upvtime", 0x09
+    lea rax, [rbx + 8]
+    cmp rax, r11
+    ja .decode_error
     mov rax, [rbx]
     add rbx, 8
     mov rdx, -62135596800000
     cmp rax, rdx
-    jne .upvtime_store
+    jne .decode_up_time_store
     xor eax, eax
-.upvtime_store:
+.decode_up_time_store:
     mov [r15 + 56], rax
 
     EXPECT_FIELD "downvoter", 0x02
-    COPY_BSON_STRING 64, 72, 80, 72
+    COPY_STRING 64, 72, 72
 
     EXPECT_FIELD "downvtime", 0x09
+    lea rax, [rbx + 8]
+    cmp rax, r11
+    ja .decode_error
     mov rax, [rbx]
     add rbx, 8
     mov rdx, -62135596800000
     cmp rax, rdx
-    jne .downvtime_store
+    jne .decode_down_time_store
     xor eax, eax
-.downvtime_store:
+.decode_down_time_store:
     mov [r15 + 80], rax
 
     cmp rbx, r11
@@ -392,6 +414,3 @@ karma_bson_decode:
     pop rbp
     pop rbx
     ret
-
-section .rodata
-score_name: db "score", 0
