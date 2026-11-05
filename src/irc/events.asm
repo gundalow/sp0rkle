@@ -4,6 +4,7 @@ global irc_event_dispatch
 global irc_session_dispatch_next
 extern str_ascii_casecmp_n
 extern irc_session_next
+extern irc_line_length
 
 ; int64_t irc_event_dispatch(const struct irc_event_handler *entries,
 ;     uint64_t count, const char *line, uint64_t line_len,
@@ -149,6 +150,8 @@ irc_session_dispatch_next:
     call irc_session_next
     test eax, eax
     jle .dispatch_return
+    mov rdi, r13
+    call irc_line_length
     mov [rbp - 56], rax
 
     mov rdi, rbx
