@@ -144,7 +144,8 @@ db_key_encode_u64:
     mov ecx, eax
     mov rax, r14
     shr rax, cl
-    mov [rbx + r10 + r9], al
+    lea rcx, [r10 + r9]
+    mov [rbx + rcx], al
     inc r9d
     jmp .u64_store_loop
 .u64_done:
@@ -167,6 +168,8 @@ db_key_encode_bool:
     push r12
     push r13
     push r14
+    push r15
+    sub rsp, 8
     mov r12, rdi
     mov r13, rsi
     mov r14d, edx
@@ -204,6 +207,8 @@ db_key_encode_bool:
 .bool_error:
     mov rax, -1
 .bool_return:
+    add rsp, 8
+    pop r15
     pop r14
     pop r13
     pop r12
