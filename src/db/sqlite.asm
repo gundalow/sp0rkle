@@ -18,6 +18,7 @@ global db_store_scan_next
 global db_store_scan_close
 
 extern sqlite3_open_v2
+extern sqlite3_busy_timeout
 extern sqlite3_close
 extern sqlite3_exec
 extern sqlite3_free
@@ -88,6 +89,11 @@ db_store_open:
     test eax, eax
     jnz .open_close_partial
     mov rbx, [rsp]
+    mov rdi, rbx
+    mov esi, 5000
+    call sqlite3_busy_timeout
+    test eax, eax
+    jnz .open_close_partial
     mov rdi, rbx
     lea rsi, [rel schema_sql]
     xor edx, edx
