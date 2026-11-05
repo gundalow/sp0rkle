@@ -88,3 +88,13 @@ and 0 otherwise. This mirrors the reference `util.IsFactoidAddition`
 predicate. Call it with the original IRC line text, before context text is
 trimmed or the addressed nickname is removed. Pass its result as the
 `factoid_addition` argument to `bot_command_dispatch`.
+
+
+## Help lookup
+
+`bot_command_help_text(entries, count, text, text_len)` returns the help
+string pointer from the entry with the longest matching prefix, using the
+same case-insensitive matching and tie behaviour as
+`bot_command_match`. It returns NULL when no prefix matches. Empty-input
+wiki response, candidate suggestions, and final response formatting remain
+the responsibility of the help command handler.
