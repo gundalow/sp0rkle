@@ -22,7 +22,7 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Command argument normalization that trims and compresses ASCII whitespace.
 - Command-dispatch orchestration for addressed gating, factoid bypass, longest-prefix handler selection and normalized arguments.
 - Reference-compatible factoid-addition detection for `:is` and `:=` markers.
-- Longest-prefix command help-string lookup.
+- Longest-prefix command help-string lookup and up-to-ten candidate suggestions.
 - Nick-ignore filtering with lowercase namespace lookup callback and ordered, short-circuiting filter pipeline.
 
 ## Not implemented yet
