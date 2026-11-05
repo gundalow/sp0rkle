@@ -120,7 +120,6 @@ db_store_keyed_scan_open:
 .keyscan_nested:
     test r15, r15
     jz .keyscan_error
-    test qword [rsp], 0
     ; For non-empty keys, use caller scratch to build the nested path.
     mov rdi, r13
     mov rsi, r14
