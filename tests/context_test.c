@@ -1,15 +1,15 @@
 #include <assert.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 extern int bot_strip_address_prefix(const char *, size_t, const char *, size_t,
                                     size_t *, size_t *);
 
-extern int bot_context_prepare_privmsg(const char *, size_t,
-                                      const char *, size_t,
-                                      const char *, size_t,
-                                      size_t *, size_t *, int *);
+struct bot_context_result { size_t start; uint32_t len; uint32_t addressed; };
+extern struct bot_context_result bot_context_prepare_privmsg(
+    const char *, size_t, const char *, size_t, const char *, size_t);
 
 static void check(const char *text, const char *nick, int expected,
                   const char *remainder) {
