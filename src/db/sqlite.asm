@@ -6,6 +6,7 @@ global db_store_begin
 global db_store_commit
 global db_store_rollback
 global db_store_put
+global db_store_put_batch
 global db_store_get
 global db_store_delete
 global db_store_sequence_next
@@ -63,6 +64,9 @@ scan_sql: db "SELECT key,value FROM kv WHERE path=?1 ORDER BY key", 0
 savepoint_sql: db "SAVEPOINT bucket_delete", 0
 rollback_savepoint_sql: db "ROLLBACK TO bucket_delete", 0
 release_sql: db "RELEASE bucket_delete", 0
+batch_savepoint_sql: db "SAVEPOINT batch_put", 0
+batch_rollback_sql: db "ROLLBACK TO batch_put", 0
+batch_release_sql: db "RELEASE batch_put", 0
 
 section .text
 ; int db_store_open(path, sqlite_handle_out)
@@ -957,4 +961,73 @@ db_store_scan_close:
     jmp sqlite3_finalize
 .scan_close_error:
     mov eax, -1
+    ret
+
+; Batch entry (48 bytes): path ptr, path len, key ptr, key len, value ptr, value len.
+; int db_store_put_batch(handle, entries, count)
+; All upserts are atomic. A savepoint allows this operation inside a caller
+; transaction; any invalid entry rolls back the entire batch.
+db_store_put_batch:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    xor r15d, r15d
+    test r12, r12
+    jz .batch_error
+    test r13, r13
+    jz .batch_error
+    mov rdi, r12
+    lea rsi, [rel batch_savepoint_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .batch_error
+.batch_loop:
+    cmp r15, r14
+    jae .batch_commit
+    mov rax, r15
+    imul rax, 48
+    lea rbx, [r13 + rax]
+    mov rdi, r12
+    mov rsi, [rbx]
+    mov rdx, [rbx + 8]
+    mov rcx, [rbx + 16]
+    mov r8, [rbx + 24]
+    mov r9, [rbx + 32]
+    mov rax, [rbx + 40]
+    mov [rsp], rax
+    call db_store_put
+    test eax, eax
+    jnz .batch_rollback
+    inc r15
+    jmp .batch_loop
+.batch_commit:
+    mov rdi, r12
+    lea rsi, [rel batch_release_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .batch_rollback
+    xor eax, eax
+    jmp .batch_done
+.batch_rollback:
+    mov rdi, r12
+    lea rsi, [rel batch_rollback_sql]
+    call db_store_exec
+    mov rdi, r12
+    lea rsi, [rel batch_release_sql]
+    call db_store_exec
+.batch_error:
+    mov eax, -1
+.batch_done:
+    add rsp, 16
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
