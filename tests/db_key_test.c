@@ -8,6 +8,7 @@ extern long db_key_encode_u64(const char *, size_t, uint64_t, unsigned char *, s
 extern long db_key_encode_bool(const char *, size_t, int, unsigned char *, size_t);
 extern long db_key_encode_id(const unsigned char *, unsigned char *, size_t);
 extern long db_key_encode_timestamp_ms(const char *, size_t, int64_t, unsigned char *, size_t);
+extern long db_key_path_append(const unsigned char *, size_t, const unsigned char *, size_t, unsigned char *, size_t);
 int main(void) {
     unsigned char out[64] = {0};
     assert(db_key_validate_name("valid", 5) == 0);
@@ -29,6 +30,15 @@ int main(void) {
     assert(db_key_encode_timestamp_ms("when", 4, INT64_C(-1), out, sizeof(out)) == 13);
     const unsigned char ts_expected[] = {'w','h','e','n',0x1f,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff};
     assert(memcmp(out, ts_expected, sizeof(ts_expected)) == 0);
+    const unsigned char parent_path[] = {0xaa};
+    const unsigned char child_elem[] = {0x1f, 0x00};
+    unsigned char path_out[32] = {0};
+    assert(db_key_path_append(parent_path, sizeof(parent_path), child_elem, sizeof(child_elem), path_out, sizeof(path_out)) == 11);
+    const unsigned char path_expected[] = {0xaa,0,0,0,0,0,0,0,2,0x1f,0};
+    assert(memcmp(path_out, path_expected, sizeof(path_expected)) == 0);
+    memset(path_out, 0x55, sizeof(path_out));
+    assert(db_key_path_append(parent_path, sizeof(parent_path), child_elem, sizeof(child_elem), path_out, 10) == -1);
+    assert(path_out[0] == 0x55);
     memset(out, 0x55, sizeof(out));
     assert(db_key_encode_string("name", 4, "value", 5, out, 9) == -1);
     assert(out[0] == 0x55);
