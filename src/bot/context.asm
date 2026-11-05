@@ -91,10 +91,10 @@ bot_strip_address_prefix:
 .trailing:
     test r11, r11
     jz .store
-    dec r11
-    cmp r11, r10
+    lea rax, [r11 - 1]
+    cmp rax, r10
     jb .store
-    mov al, [r12 + r11]
+    mov al, [r12 + rax]
     cmp al, ' '
     je .trail_more
     cmp al, 9
@@ -103,6 +103,7 @@ bot_strip_address_prefix:
     jbe .trail_more
     jmp .store
 .trail_more:
+    mov r11, rax
     jmp .trailing
 .empty:
     mov r11, r10
