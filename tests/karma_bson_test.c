@@ -19,6 +19,8 @@ struct decode_request {
 };
 extern int karma_bson_decode(struct decode_request *);
 extern int bson_document_validate(const unsigned char *, size_t);
+struct bson_field { const char *name; uint64_t name_len; uint32_t type; uint32_t reserved; const void *value; uint64_t value_len; };
+extern int bson_document_encode(const struct bson_field *, size_t, unsigned char *, size_t, size_t *);
 
 static uint32_t u32(const unsigned char *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
@@ -93,6 +95,22 @@ int main(void) {
     assert(bson_document_validate(nested_doc,sizeof(nested_doc))==0);
     nested_doc[12]=4;
     assert(bson_document_validate(nested_doc,sizeof(nested_doc))==-1);
+    unsigned char generic[128], string_value[12]={8,0,0,0,'S','p','0','r','K','l','e',0};
+    uint32_t integer_value=3;
+    unsigned char empty_nested[5]={5,0,0,0,0};
+    struct bson_field fields[]={
+        {"name",4,0x02,0,string_value,sizeof(string_value)},
+        {"score",5,0x10,0,&integer_value,sizeof(integer_value)},
+        {"child",5,0x03,0,empty_nested,sizeof(empty_nested)}
+    };
+    size_t generic_len=0;
+    assert(bson_document_encode(fields,3,generic,sizeof(generic),&generic_len)==0);
+    assert(bson_document_validate(generic,generic_len)==0);
+    p=field(generic,"score",0x10); assert(p && u32(p)==3);
+    unsigned char generic_untouched[32]; memset(generic_untouched,0x33,sizeof(generic_untouched));
+    size_t generic_old_len=99;
+    assert(bson_document_encode(fields,3,generic_untouched,sizeof(generic_untouched),&generic_old_len)==-1);
+    assert(generic_untouched[0]==0x33 && generic_old_len==99);
     puts("Karma BSON tests: PASS");
     return 0;
 }
