@@ -62,6 +62,7 @@ int main(void) {
     assert(bot_is_factoid_addition("FACT:IS value", 13) == 1);
     assert(bot_is_factoid_addition("key:=value", 10) == 1);
     assert(bot_is_factoid_addition("ordinary message", 16) == 0);
+    assert(bot_is_factoid_addition("fact: is true", 13) == 0);
     assert(bot_is_factoid_addition(":i", 2) == 0);
     assert(bot_is_factoid_addition(":=", 2) == 1);
     void *handler = NULL;
