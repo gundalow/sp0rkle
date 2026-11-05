@@ -29,6 +29,8 @@ extern int db_store_scan_close(void *);
 extern int db_store_scan_tree_open(void *, const void *, size_t, void **);
 struct scan_tree_entry { void *path; size_t path_capacity; size_t *path_len; void *key; size_t key_capacity; size_t *key_len; void *value; size_t value_capacity; size_t *value_len; };
 extern int db_store_scan_tree_next(void *, struct scan_tree_entry *);
+extern int db_store_keyed_delete(void *, const void *, size_t, const void *, size_t, void *, size_t);
+extern int db_store_keyed_scan_open(void *, const void *, size_t, const void *, size_t, void **, void *, size_t);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -71,6 +73,17 @@ int main(void) {
     assert(tree_key_len==6 && memcmp(tree_key,"nested",6)==0);
     assert(db_store_scan_tree_next(tree_cursor,&tree_entry)==0);
     assert(db_store_scan_close(tree_cursor)==0);
+    unsigned char keyed_path[64];
+    void *keyed_cursor=NULL;
+    assert(db_store_keyed_scan_open(db,parent_name,sizeof(parent_name),child_name,sizeof(child_name),&keyed_cursor,keyed_path,sizeof(keyed_path))==0);
+    assert(db_store_scan_tree_next(keyed_cursor,&tree_entry)==1);
+    assert(tree_key_len==6 && memcmp(tree_key,"nested",6)==0);
+    assert(db_store_scan_tree_next(keyed_cursor,&tree_entry)==0);
+    assert(db_store_scan_close(keyed_cursor)==0);
+    assert(db_store_keyed_delete(db,parent_name,sizeof(parent_name),"parent",6,keyed_path,sizeof(keyed_path))==0);
+    assert(db_store_get(db,parent_name,sizeof(parent_name),"parent",6,out,sizeof(out),&out_len)==0);
+    assert(db_store_keyed_delete(db,parent_name,sizeof(parent_name),child_name,sizeof(child_name),keyed_path,sizeof(keyed_path))==0);
+    assert(db_store_bucket_exists(db,child_path,13)==0);
     assert(db_store_bucket_delete(db, parent_name, sizeof(parent_name)) == 0);
     assert(db_store_bucket_exists(db, parent_name, sizeof(parent_name)) == 0);
     assert(db_store_bucket_exists(db, child_path, 16) == 0);
