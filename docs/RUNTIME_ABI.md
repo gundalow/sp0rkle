@@ -64,3 +64,14 @@ frames, NUL/CR/LF bytes, empty tags/prefixes/commands and malformed commands.
 The input frame excludes CRLF; callers must strip the IRC line terminator
 before parsing. The parser does not allocate or copy input data.
 \n## IRC TCP transport\n\n| Symbol | Arguments | Result | Contract |\n|---|---|---|---|\n| `irc_tcp_connect` | RDI = NUL-terminated host, RSI = NUL-terminated decimal service | RAX = connected fd or -1 | Resolves with `getaddrinfo(AF_UNSPEC, SOCK_STREAM)`, tries returned addresses in order, and returns a blocking TCP socket. Caller owns the fd. |\n| `irc_tcp_send_all` | EDI = fd, RSI = byte pointer, RDX = length | EAX = 0 or -1 | Sends all bytes using `send(MSG_NOSIGNAL)`; zero-length sends succeed. A syscall error, including interruption, returns -1. |\n| `irc_tcp_recv_line` | EDI = fd, RSI = writable buffer, RDX = capacity | RAX = length, 0 on clean EOF, -1 on error | Reads until LF, strips one preceding CR, and appends NUL. Capacity includes the NUL. EOF after a partial line is an error. First implementation reads one byte per `recv`. |\n\nTransport routines are blocking and do not implement TLS, registration, reconnect/backoff, socket timeouts or multi-server lifecycle. The caller must append CRLF when sending IRC protocol lines and pass the returned line length to `irc_parse_message`.\n
+## IRC session layer
+
+| Symbol | Arguments | Result | Contract |
+|---|---|---|---|
+| `irc_send_registration` | EDI = fd, RSI = NUL-terminated nick, RDX = user, RCX = real name | EAX = 0 or -1 | Formats and sends the initial `NICK` and `USER` commands in one write-all operation. Identity strings are trusted configuration and must not contain CR/LF. |
+| `irc_session_next` | EDI = fd, RSI = line buffer, RDX = capacity, RCX = 152-byte parsed-message output | EAX = 1 event, 0 clean EOF, -1 error | Reads and parses frames until a non-PING event arrives. PING is answered immediately with `PONG :<first-param>\r\n`. The returned parsed offsets refer to the caller's line buffer. |
+
+The session layer does not yet handle server registration numerics, nick-in-use
+(433), CAP/SASL, channel joins, TLS, timeouts, reconnects or asynchronous event
+dispatch. The caller owns the socket and must close it. A returned event's
+buffer remains valid only until the caller reuses that line buffer.
