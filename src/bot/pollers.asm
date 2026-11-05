@@ -196,9 +196,17 @@ bot_poller_set_poll_all:
     jmp .poll_loop
 .poll_done:
     mov eax, r15d
-    jmp .poll_return
+    add rsp, 8
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
+    ret
 .poll_error:
     mov eax, -1
+    ret
 .poll_return:
     pop r14
     pop r13
