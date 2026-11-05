@@ -37,6 +37,8 @@ struct indexed_delete_request { const void *value_path; size_t value_path_len; c
 extern int db_store_indexed_delete(void *, const struct indexed_delete_request *);
 struct indexed_get_request { const void *values_path; size_t values_path_len; const void *indexes_path; size_t indexes_path_len; const void *index_path; size_t index_path_len; const void *index_key; size_t index_key_len; void *pointer_scratch; size_t pointer_capacity; void *value_out; size_t value_capacity; size_t *value_len; };
 extern int db_store_indexed_get(void *, const struct indexed_get_request *);
+struct indexed_scan_request { void *statement; struct scan_tree_entry *scan_entry; const void *values_path; size_t values_path_len; void *value_out; size_t value_capacity; size_t *value_len; unsigned char *seen_ids; size_t *seen_count; size_t seen_capacity; };
+extern int db_store_indexed_scan_next(void *, const struct indexed_scan_request *);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -139,7 +141,21 @@ int main(void) {
     assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==1);
     assert(out_len==10 && memcmp(out,"record-two",10)==0);
     assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==1);
-    struct indexed_delete_request indexed_delete={vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),&next_index,1};
+    const unsigned char alias_index[]={'n','a','m','e',0x1f,'A','l','i','a','s'};
+    struct batch_entry alias_entry={idxs_path,sizeof(idxs_path)-1,alias_index,sizeof(alias_index),pointer_value,sizeof(pointer_value)};
+    assert(db_store_put(db,idxs_path,sizeof(idxs_path)-1,alias_index,sizeof(alias_index),pointer_value,sizeof(pointer_value))==0);
+    void *index_cursor=NULL;
+    assert(db_store_scan_tree_open(db,idxs_path,sizeof(idxs_path)-1,&index_cursor)==0);
+    unsigned char scan_index_path[32],scan_index_key[32],scan_pointer[32],seen_ids[64];
+    size_t scan_index_path_len=0,scan_index_key_len=0,scan_pointer_len=0,seen_count=0,indexed_scan_len=0;
+    struct scan_tree_entry scan_descriptor={scan_index_path,sizeof(scan_index_path),&scan_index_path_len,scan_index_key,sizeof(scan_index_key),&scan_index_key_len,scan_pointer,sizeof(scan_pointer),&scan_pointer_len};
+    struct indexed_scan_request scan_request={index_cursor,&scan_descriptor,vals_path,sizeof(vals_path)-1,indexed_value,sizeof(indexed_value),&indexed_scan_len,seen_ids,&seen_count,4};
+    assert(db_store_indexed_scan_next(db,&scan_request)==1);
+    assert(indexed_scan_len==10 && memcmp(indexed_value,"record-two",10)==0 && seen_count==1);
+    assert(db_store_indexed_scan_next(db,&scan_request)==0);
+    assert(db_store_scan_close(index_cursor)==0);
+    struct batch_entry delete_indexes[]={next_index,alias_entry};
+    struct indexed_delete_request indexed_delete={vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),delete_indexes,2};
     assert(db_store_indexed_delete(db,&indexed_delete)==0);
     assert(db_store_get(db,vals_path,sizeof(vals_path)-1,object_key,sizeof(object_key),out,sizeof(out),&out_len)==0);
     assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==0);
