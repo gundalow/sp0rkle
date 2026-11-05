@@ -110,7 +110,8 @@ irc_parse_message:
     ; Optional source prefix: :server or :nick!user@host
     cmp byte [r12 + rbx], ':'
     jne .command
-    mov ebx, 1
+    inc rbx
+    mov r9, rbx                ; prefix content start
 .prefix_scan:
     cmp rbx, r13
     jae .bad
@@ -121,9 +122,9 @@ irc_parse_message:
 .prefix_end:
     cmp rbx, 1
     jbe .bad
-    mov dword [r14 + 8], 1
+    mov [r14 + 8], r9d
     mov eax, ebx
-    dec eax
+    sub eax, r9d
     mov [r14 + 12], eax
     inc rbx
 .prefix_skip_spaces:
@@ -148,19 +149,23 @@ irc_parse_message:
 .command_end:
     test ebx, ebx
     jz .bad
+    mov r11, rbx
+    sub r11, r10
+    test r11, r11
+    jz .bad
     mov [r14 + 16], r10d
-    mov [r14 + 20], ebx
+    mov [r14 + 20], r11d
     ; Determine whether the command is numeric from its first byte.
     mov al, [r12 + r10]
     cmp al, '0'
     jb .alpha_command
     cmp al, '9'
     ja .alpha_command
-    cmp ebx, 3
+    cmp r11, 3
     jne .bad
     xor ecx, ecx
 .numeric_scan:
-    cmp rcx, rbx
+    cmp rcx, r11
     jae .command_done
     mov al, [r12 + r10 + rcx]
     cmp al, '0'
@@ -188,7 +193,7 @@ irc_parse_message:
     inc rcx
     jmp .alpha_scan
 .command_done:
-    test rbx, rbx
+    test r11, r11
     jz .bad
     inc rbx
     jmp .skip_spaces
