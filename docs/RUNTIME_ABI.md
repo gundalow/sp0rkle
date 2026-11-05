@@ -75,3 +75,4 @@ The session layer does not yet handle server registration numerics, nick-in-use
 (433), CAP/SASL, channel joins, TLS, timeouts, reconnects or asynchronous event
 dispatch. The caller owns the socket and must close it. A returned event's
 buffer remains valid only until the caller reuses that line buffer.
+\nThe `make test` target also runs a C socketpair harness against these assembly interfaces. It checks the exact NICK/USER wire payload and verifies that a PING is answered before the following PRIVMSG is returned to the caller.\n
