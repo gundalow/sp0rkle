@@ -63,7 +63,7 @@ int main(void) {
     assert(dispatched == 1 && handler == (void *)3);
     assert(strcmp(normalized, "1") == 0);
     handler = (void *)99;
-    dispatched = bot_command_dispatch(entries, 5, "help", 4, 0, NULL,
+    dispatched = bot_command_dispatch(entries, 5, "help", 4, 0, 0,
                                        normalized, sizeof(normalized), &handler);
     assert(dispatched == 0 && handler == NULL);
     dispatched = bot_command_dispatch(entries, 5, "learn something", 15, 1,
@@ -71,7 +71,7 @@ int main(void) {
                                        sizeof(normalized), &handler);
     assert(dispatched == 0 && handler == NULL);
     dispatched = bot_command_dispatch(entries, 5, "not-a-command", 13, 1,
-                                       NULL, normalized, sizeof(normalized),
+                                       0, normalized, sizeof(normalized),
                                        &handler);
     assert(dispatched == 0 && handler == NULL);
     puts("command tests: PASS");
