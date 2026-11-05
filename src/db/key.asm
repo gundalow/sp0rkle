@@ -6,6 +6,7 @@ global db_key_encode_u64
 global db_key_encode_bool
 global db_key_encode_id
 global db_key_encode_timestamp_ms
+global db_key_path_append
 
 %define USEP 0x1f
 
@@ -252,3 +253,80 @@ db_key_encode_timestamp_ms:
     ; The uint64 encoder accepts the same register layout after treating the
     ; signed millisecond value as its raw 64-bit representation.
     jmp db_key_encode_u64
+
+; ssize_t db_key_path_append(path,path_len,element,element_len,out,capacity)
+; Appends an unambiguous length-prefixed element to an opaque bucket path:
+; path || uint64_be(element_len) || element. Returns new path length or -1.
+db_key_path_append:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    mov rbx, r8
+    mov r10, r9
+    test r12, r12
+    jz .path_error
+    test r14, r14
+    jz .path_error
+    test rbx, rbx
+    jz .path_error
+    mov rax, r13
+    add rax, 8
+    jc .path_error
+    add rax, r15
+    jc .path_error
+    cmp rax, r10
+    ja .path_error
+    xor ecx, ecx
+.path_copy_parent:
+    cmp rcx, r13
+    jae .path_length_prefix
+    mov al, [r12 + rcx]
+    mov [rbx + rcx], al
+    inc rcx
+    jmp .path_copy_parent
+.path_length_prefix:
+    mov r11, r13
+    mov rax, r15
+    xor edx, edx
+.path_prefix_loop:
+    cmp edx, 8
+    jae .path_copy_element
+    mov rsi, 7
+    sub rsi, rdx
+    shl rsi, 3
+    mov rdi, rax
+    mov rcx, rsi
+    shr rdi, cl
+    mov [rbx + r11 + rdx], dil
+    inc edx
+    jmp .path_prefix_loop
+.path_copy_element:
+    lea rdi, [rbx + r11 + 8]
+    xor ecx, ecx
+.path_element_loop:
+    cmp rcx, r15
+    jae .path_done
+    mov al, [r14 + rcx]
+    mov [rdi + rcx], al
+    inc rcx
+    jmp .path_element_loop
+.path_done:
+    mov rax, r13
+    add rax, 8
+    add rax, r15
+    jmp .path_return
+.path_error:
+    mov rax, -1
+.path_return:
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
