@@ -14,8 +14,12 @@ The validator does not enforce UTF-8 validity, canonical array index names, dupl
 
 The caller is responsible for supplying correctly encoded value bytes for the selected BSON type. If a raw value is malformed, the function returns -1 after writing the document; the output is then unspecified. Field names must not contain NUL bytes.
 
+## Generic field lookup
+
+`bson_find_field(doc, len, name, name_len, out)` first validates the complete document, then returns the first exact bytewise field-name match. Its 24-byte output contains the BSON type at offset 0, raw value pointer at offset 8 and raw value byte length at offset 16. It returns 1 when found, 0 when absent, or -1 for malformed input. The returned value pointer is a view into the caller's document buffer.
+
 ## Karma schema codec
 
 `karma_bson_encode` and `karma_bson_decode` provide the current schema-specific record codec. See `docs/KARMA_STORE_ABI.md` for its record field order, Go-compatible integer-width selection, zero-time encoding and caller-owned buffer requirements.
 
-A generic BSON field lookup/decoder and codecs for the remaining collections are still outstanding.
+A general-purpose BSON value decoder and codecs for the remaining collections are still outstanding.
