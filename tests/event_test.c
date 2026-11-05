@@ -63,7 +63,7 @@ int main(void) {
                               &message) == -1);
     int sockets[2];
     assert(socketpair(AF_UNIX, SOCK_STREAM, 0, sockets) == 0);
-    const char frame[] = ":nick PRIVMSG #chan :hello\\r\\n";
+    const char frame[] = ":nick PRIVMSG #chan :hello\r\n";
     assert(write(sockets[1], frame, sizeof(frame) - 1) == (ssize_t)(sizeof(frame) - 1));
     char input[512];
     memset(&message, 0, sizeof(message));
