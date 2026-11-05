@@ -70,7 +70,6 @@ bot_nick_ignore_should_process:
     mov eax, 1
 .done:
     pop r15
-    pop r15
     pop r14
     pop r13
     pop r12
@@ -117,6 +116,7 @@ bot_filter_pipeline_should_process:
 .reject:
     xor eax, eax
 .return:
+    pop r15
     pop r14
     pop r13
     pop r12
