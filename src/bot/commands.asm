@@ -363,7 +363,7 @@ bot_command_possible:
     push r13
     push r14
     push r15
-    sub rsp, 88
+    sub rsp, 104
 
     mov r12, rdi
     mov r13d, esi
@@ -373,7 +373,7 @@ bot_command_possible:
     mov [rbp - 56], r8       ; output array
     mov qword [rbp - 64], 0  ; entry index
     mov qword [rbp - 72], 0  ; result count
-    mov qword [rbp - 128], 0 ; text cursor
+    mov qword [rbp - 144], 0 ; text cursor
 
     test r9, r9
     jz .possible_empty
@@ -399,10 +399,10 @@ bot_command_possible:
     mov [rbp - 96], rax
     test rax, rax
     jz .next_entry
-    mov qword [rbp - 128], 0 ; restart input scan for each prefix
+    mov qword [rbp - 144], 0 ; restart input scan for each prefix
 
 .word_loop:
-    mov rax, [rbp - 128]
+    mov rax, [rbp - 144]
 .skip_word_space:
     cmp rax, r15
     jae .next_entry
@@ -433,7 +433,7 @@ bot_command_possible:
     inc rax
     jmp .word_end
 .word_ready:
-    mov [rbp - 128], rax
+    mov [rbp - 144], rax
     mov rdx, rax
     sub rdx, [rbp - 104]
     mov [rbp - 112], rdx
@@ -449,9 +449,9 @@ bot_command_possible:
     sub rdx, [rbp - 112]
     cmp rax, rdx
     ja .word_loop
-    mov qword [rbp - 124], 0 ; character index
+    mov qword [rbp - 136], 0 ; character index
 .compare_word:
-    mov rcx, [rbp - 124]
+    mov rcx, [rbp - 136]
     cmp rcx, [rbp - 112]
     jae .found_possible
     mov rax, [rbp - 104]
@@ -475,7 +475,7 @@ bot_command_possible:
 .prefix_folded:
     cmp al, dl
     jne .try_next_substring
-    inc qword [rbp - 124]
+    inc qword [rbp - 136]
     jmp .compare_word
 .try_next_substring:
     inc qword [rbp - 120]
@@ -502,7 +502,7 @@ bot_command_possible:
 .possible_error:
     mov rax, -1
 .possible_return:
-    add rsp, 88
+    add rsp, 104
     pop r15
     pop r14
     pop r13
