@@ -8,6 +8,8 @@ global db_store_rollback
 global db_store_put
 global db_store_get
 global db_store_delete
+global db_store_sequence_next
+global db_store_sequence_set
 
 extern sqlite3_open_v2
 extern sqlite3_close
@@ -19,6 +21,8 @@ extern sqlite3_step
 extern sqlite3_finalize
 extern sqlite3_column_blob
 extern sqlite3_column_bytes
+extern sqlite3_column_int64
+extern sqlite3_bind_int64
 
 %define SQLITE_OPEN_READWRITE 0x00000002
 %define SQLITE_OPEN_CREATE    0x00000004
@@ -38,6 +42,8 @@ rollback_sql: db "ROLLBACK", 0
 put_sql: db "INSERT INTO kv(path,key,value) VALUES(?1,?2,?3) ON CONFLICT(path,key) DO UPDATE SET value=excluded.value", 0
 get_sql: db "SELECT value FROM kv WHERE path=?1 AND key=?2", 0
 delete_sql: db "DELETE FROM kv WHERE path=?1 AND key=?2", 0
+seq_next_sql: db "INSERT INTO sequences(path,value) VALUES(?1,1) ON CONFLICT(path) DO UPDATE SET value=value+1 RETURNING value", 0
+seq_set_sql: db "INSERT INTO sequences(path,value) VALUES(?1,?2) ON CONFLICT(path) DO UPDATE SET value=excluded.value", 0
 
 section .text
 ; int db_store_open(path, sqlite_handle_out)
@@ -400,6 +406,132 @@ db_store_delete:
     add rsp, 16
     pop r15
     pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_sequence_next(handle,path,path_len,value_out)
+; Atomically increments a per-path sequence (first result is 1).
+db_store_sequence_next:
+    push rbx
+    push r12
+    push r13
+    push r14
+    sub rsp, 24
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov rbx, rcx
+    mov qword [rsp], 0
+    test r12, r12
+    jz .seq_next_error
+    test r13, r13
+    jz .seq_next_error
+    test rbx, rbx
+    jz .seq_next_error
+    mov rdi, r12
+    lea rsi, [rel seq_next_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .seq_next_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r13
+    mov rcx, r14
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .seq_next_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_ROW
+    jne .seq_next_finalize_error
+    mov rdi, [rsp]
+    xor esi, esi
+    call sqlite3_column_int64
+    mov [rbx], rax
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .seq_next_error
+    xor eax, eax
+    jmp .seq_next_done
+.seq_next_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.seq_next_error:
+    mov eax, -1
+.seq_next_done:
+    add rsp, 24
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; int db_store_sequence_set(handle,path,path_len,value)
+; Sets the sequence to an exact signed 64-bit value.
+db_store_sequence_set:
+    push rbx
+    push r12
+    push r13
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov rbx, rcx
+    mov qword [rsp], 0
+    test r12, r12
+    jz .seq_set_error
+    test r13, r13
+    jz .seq_set_error
+    mov rdi, r12
+    lea rsi, [rel seq_set_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .seq_set_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r13
+    mov rcx, rdx
+    ; The path length is the third argument and is preserved in rdx only
+    ; after saving it below; reload from the caller's original stack frame.
+    mov rcx, rdx
+    mov rdx, r13
+    mov rcx, [rsp + 8]
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .seq_set_finalize_error
+    mov rdi, [rsp]
+    mov esi, 2
+    mov rdx, rbx
+    call sqlite3_bind_int64
+    test eax, eax
+    jnz .seq_set_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_DONE
+    jne .seq_set_finalize_error
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    test eax, eax
+    jnz .seq_set_error
+    xor eax, eax
+    jmp .seq_set_done
+.seq_set_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.seq_set_error:
+    mov eax, -1
+.seq_set_done:
+    add rsp, 16
     pop r13
     pop r12
     pop rbx
