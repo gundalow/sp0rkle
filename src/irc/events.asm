@@ -28,7 +28,7 @@ irc_event_dispatch:
     push r13
     push r14
     push r15
-    sub rsp, 16
+    sub rsp, 24
 
     mov r12, rdi                ; entries
     mov r13, rsi                ; count
@@ -52,6 +52,10 @@ irc_event_dispatch:
     sub rax, r11
     cmp r10, rax
     ja .invalid
+    mov eax, r10d
+    shl rax, 32
+    or rax, r11
+    mov [rbp - 64], rax   ; packed command offset/length
 
     mov qword [rbp - 48], 0     ; invocation count
     mov qword [rbp - 56], 0     ; entry index
@@ -63,19 +67,26 @@ irc_event_dispatch:
     shl rax, 5
     lea rdi, [r12 + rax]
     mov rdx, [rdi + 8]
-    cmp rdx, r10
+    mov rax, [rbp - 64]
+    shr rax, 32
+    cmp rdx, rax
     jne .next
     mov rsi, [rdi]
     test rsi, rsi
     jz .next
+    mov rax, [rbp - 64]
+    mov r10d, eax
+    shr rax, 32
+    mov r11d, eax
     mov rdi, rsi
-    lea rsi, [r14 + r11]
-    mov edx, r10d
+    lea rsi, [r14 + r10]
+    mov edx, r11d
     call str_ascii_casecmp_n
     test eax, eax
     jne .next
 
-    ; Reload entry and callback fields after the comparison call.
+    ; Reload caller-clobbered loop state after the comparison call.
+    mov r9, [rbp - 56]
     mov rax, r9
     shl rax, 5
     lea rdi, [r12 + rax]
@@ -97,7 +108,7 @@ irc_event_dispatch:
 .invalid:
     mov rax, -1
 .return:
-    add rsp, 16
+    add rsp, 24
     pop r15
     pop r14
     pop r13
