@@ -217,7 +217,8 @@ irc_send_registration:
     push r12
     push r13
     push r14
-    sub rsp, 1040
+    push r15
+    sub rsp, 1048
 
     mov r12d, edi
     mov r13, rsi
@@ -245,7 +246,8 @@ irc_send_registration:
 .registration_error:
     mov eax, -1
 .registration_return:
-    add rsp, 1040
+    add rsp, 1048
+    pop r15
     pop r14
     pop r13
     pop r12
@@ -315,7 +317,7 @@ irc_session_next:
     mov edx, [r15 + 36]         ; first parameter length
     cmp edx, 504                ; PONG + token + CRLF <= 512 bytes
     ja .session_error
-    mov r8d, edx                ; preserve token length
+    mov ebx, edx                ; preserve token length in callee-saved register
 
     mov rdi, rsp
     lea rsi, [rel pong_prefix]
@@ -325,12 +327,12 @@ irc_session_next:
     mov eax, [r15 + 32]
     lea rdi, [rsp + 6]
     lea rsi, [r13 + rax]
-    mov edx, r8d
+    mov edx, ebx
     call mem_copy
 
-    mov byte [rsp + 6 + r8], 13
-    mov byte [rsp + 7 + r8], 10
-    lea rdx, [r8 + 8]
+    mov byte [rsp + 6 + rbx], 13
+    mov byte [rsp + 7 + rbx], 10
+    lea rdx, [rbx + 8]
     mov edi, r12d
     mov rsi, rsp
     call irc_tcp_send_all
