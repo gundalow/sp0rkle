@@ -4,6 +4,8 @@ global db_key_validate_name
 global db_key_encode_string
 global db_key_encode_u64
 global db_key_encode_bool
+global db_key_encode_id
+global db_key_encode_timestamp_ms
 
 %define USEP 0x1f
 
@@ -212,3 +214,41 @@ db_key_encode_bool:
     pop r12
     pop rbx
     ret
+
+; ssize_t db_key_encode_id(value12,out,capacity)
+; Encodes the reference ObjectId key element: "_id" || USEP || 12 raw bytes.
+db_key_encode_id:
+    push rbx
+    push r12
+    push r13
+    mov r12, rdi
+    mov rbx, rsi
+    mov r13, rdx
+    test r12, r12
+    jz .id_error
+    test rbx, rbx
+    jz .id_error
+    cmp r13, 16
+    jb .id_error
+    mov dword [rbx], 0x1f64695f
+    mov rax, [r12]
+    mov [rbx + 4], rax
+    mov eax, [r12 + 8]
+    mov [rbx + 12], eax
+    mov eax, 16
+    jmp .id_return
+.id_error:
+    mov rax, -1
+.id_return:
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; ssize_t db_key_encode_timestamp_ms(name,nlen,unix_ms,out,capacity)
+; Mirrors TS.Bytes(): truncate-at-source to signed Unix milliseconds, then
+; encode the two's-complement bit pattern as an unsigned big-endian uint64.
+db_key_encode_timestamp_ms:
+    ; The uint64 encoder accepts the same register layout after treating the
+    ; signed millisecond value as its raw 64-bit representation.
+    jmp db_key_encode_u64
