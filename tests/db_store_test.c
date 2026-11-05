@@ -7,6 +7,7 @@
 
 extern int db_store_open(const char *, void **);
 extern int db_store_close(void *);
+extern int db_store_backup(void *, const char *);
 extern int db_store_begin(void *);
 extern int db_store_commit(void *);
 extern int db_store_rollback(void *);
@@ -132,7 +133,17 @@ int main(void) {
     assert(db_store_begin(db) == 0);
     assert(db_store_put(db, path, sizeof(path), "committed", 9, transient, sizeof(transient)) == 0);
     assert(db_store_commit(db) == 0);
+    char backup_filename[128];
+    snprintf(backup_filename,sizeof(backup_filename),"/tmp/sp0rkle-kv-backup-%ld.db",(long)getpid());
+    assert(db_store_backup(db,backup_filename)==0);
     assert(db_store_close(db) == 0);
+
+    void *backup_db=NULL;
+    assert(db_store_open(backup_filename,&backup_db)==0);
+    assert(db_store_get(backup_db,path,sizeof(path),"committed",9,out,sizeof(out),&out_len)==1);
+    assert(memcmp(out,transient,sizeof(transient))==0);
+    assert(db_store_close(backup_db)==0);
+    unlink(backup_filename);
 
     db = NULL;
     assert(db_store_open(filename, &db) == 0);
