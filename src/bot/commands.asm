@@ -399,6 +399,7 @@ bot_command_possible:
     mov [rbp - 96], rax
     test rax, rax
     jz .next_entry
+    mov qword [rbp - 128], 0 ; restart input scan for each prefix
 
 .word_loop:
     mov rax, [rbp - 128]
