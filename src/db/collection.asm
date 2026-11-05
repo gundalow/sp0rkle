@@ -206,7 +206,7 @@ db_store_indexed_get:
     mov rdx, [r13 + 40]
     mov rcx, [r13 + 48]
     mov r8, [r13 + 56]
-    mov r9, r14
+    mov r9, [r13 + 64]
     mov rax, [r13 + 72]
     mov [rsp], rax
     lea rax, [rsp + 16]
@@ -218,7 +218,7 @@ db_store_indexed_get:
     jz .idxget_missing
     jmp .idxget_error
 .idxget_pointer_found:
-    mov rbx, r14
+    mov rbx, [r13 + 64]
     mov r15, [rsp + 16]
     test r15, r15
     jz .idxget_error
