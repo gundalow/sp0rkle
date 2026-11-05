@@ -177,7 +177,7 @@ irc_parse_message:
 .alpha_command:
     xor ecx, ecx
 .alpha_scan:
-    cmp rcx, rbx
+    cmp rcx, r11
     jae .command_done
     mov al, [r12 + r10 + rcx]
     cmp al, 'A'
