@@ -10,6 +10,14 @@ struct karma_record {
     const char *downvoter; uint64_t downvoter_len; int64_t downvtime;
 };
 extern int karma_bson_encode(const struct karma_record *, unsigned char *, size_t, size_t *);
+struct decode_request {
+    const unsigned char *doc; uint64_t doc_len; struct karma_record *record;
+    char *subject; uint64_t subject_capacity;
+    char *key; uint64_t key_capacity;
+    char *upvoter; uint64_t upvoter_capacity;
+    char *downvoter; uint64_t downvoter_capacity;
+};
+extern int karma_bson_decode(struct decode_request *);
 
 static uint32_t u32(const unsigned char *p) {
     return (uint32_t)p[0] | ((uint32_t)p[1]<<8) | ((uint32_t)p[2]<<16) | ((uint32_t)p[3]<<24);
@@ -61,6 +69,23 @@ int main(void) {
     r.score=INT64_C(2147483648);
     assert(karma_bson_encode(&r,doc,sizeof(doc),&n)==0);
     p=field(doc,"score",0x12); assert(p && (int64_t)u64(p)==INT64_C(2147483648));
+
+    struct karma_record decoded={0};
+    char subject[32], key[32], upvoter[32], downvoter[32];
+    struct decode_request req={doc,n,&decoded,subject,sizeof(subject),key,sizeof(key),
+        upvoter,sizeof(upvoter),downvoter,sizeof(downvoter)};
+    assert(karma_bson_decode(&req)==0);
+    assert(strcmp(subject,"Sp0rKle")==0 && strcmp(key,"sp0rkle")==0);
+    assert(decoded.subject==subject && decoded.subject_len==7 && decoded.key==key);
+    assert(decoded.score==1 && decoded.votes==2);
+    assert(strcmp(upvoter,"Alice")==0 && decoded.upvoter_len==5 && decoded.upvtime==1000);
+    assert(strcmp(downvoter,"Bob")==0 && decoded.downvoter_len==3 && decoded.downvtime==2000);
+    struct decode_request small=req; small.subject_capacity=2;
+    assert(karma_bson_decode(&small)==-1);
+    unsigned char damaged[256]; memcpy(damaged,doc,n); damaged[n-1]=1;
+    req.doc=damaged;
+    assert(karma_bson_decode(&req)==-1);
+
     puts("Karma BSON tests: PASS");
     return 0;
 }
