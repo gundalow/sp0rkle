@@ -1,7 +1,7 @@
 NASM ?= nasm
 CC ?= cc
 BUILD_DIR := build
-SOURCES := src/main.asm src/runtime/strings.asm src/runtime/logging.asm src/irc/protocol.asm
+SOURCES := src/main.asm src/runtime/strings.asm src/runtime/memory.asm src/runtime/logging.asm src/irc/protocol.asm
 OBJECTS := $(patsubst src/%.asm,$(BUILD_DIR)/%.o,$(SOURCES))
 TARGET := $(BUILD_DIR)/sp0rkle
 
