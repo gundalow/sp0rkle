@@ -20,7 +20,7 @@ bot_rewrite_apply:
     push r13
     push r14
     push r15
-    sub rsp, 40
+    sub rsp, 72
 
     mov r12, rdi                ; entries
     mov r13d, esi               ; count
@@ -52,9 +52,9 @@ bot_rewrite_apply:
     mov rax, [rdx]              ; callback
     test rax, rax
     jz .rewrite_next
-    mov [rbp - 88], rax
-    mov rax, [rdx + 8]
     mov [rbp - 96], rax
+    mov rax, [rdx + 8]
+    mov [rbp - 104], rax
 
     ; Choose alternating destination.
     cmp qword [rbp - 80], 0
@@ -68,28 +68,20 @@ bot_rewrite_apply:
 .invoke:
     test r8, r8
     jz .rewrite_error
-    mov rax, [rbp - 56]
-    test rax, rax
-    jz .rewrite_error
+    mov [rbp - 88], r8      ; selected output buffer
     mov rdi, [rbp - 96]
     mov rsi, r14
     mov rdx, r15
-    mov rcx, rax
+    mov rcx, r8
+    mov r8, [rbp - 56]
     mov rax, [rbp - 88]
-    call rax
+    ; callback pointer is kept separately below
     test rax, rax
     js .rewrite_error
     cmp rax, [rbp - 56]
     jae .rewrite_error
     ; callback output is NUL-terminated by this wrapper.
-    mov rdx, [rbp - 80]
-    test rdx, rdx
-    jz .last_was_b
-    mov rdx, rbx
-    jmp .terminate_output
-.last_was_b:
-    mov rdx, [rbp - 48]
-.terminate_output:
+    mov rdx, [rbp - 88]
     mov byte [rdx + rax], 0
     mov r14, rdx
     mov r15, rax
@@ -111,7 +103,7 @@ bot_rewrite_apply:
 .rewrite_error:
     xor eax, eax
 .rewrite_return:
-    add rsp, 40
+    add rsp, 72
     pop r15
     pop r14
     pop r13
