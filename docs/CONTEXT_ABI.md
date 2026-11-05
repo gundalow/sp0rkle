@@ -34,3 +34,26 @@ matching the reference's direct string comparison for private messages.
 The result structure is returned in the System V AMD64 `RAX:RDX` pair.
 Unicode whitespace trimming remains a known difference from Go's
 `strings.TrimSpace`.
+
+
+## Rewrite pipeline
+
+`bot_rewrite_apply(entries, count, input, input_len, scratch_a, scratch_b,
+capacity, out_len)` applies registered rewrite callbacks in registration
+order. A rewriter entry is 16 bytes: callback pointer at offset 0 and opaque
+context pointer at offset 8. Each callback has the C ABI:
+
+`ssize_t rewrite(ctx, input, input_len, output, output_capacity)`
+
+A callback returns the number of output bytes, or a negative value on failure.
+It must not write more than `output_capacity - 1` bytes. The wrapper adds the
+terminating NUL and passes each result to the next callback. The two distinct
+caller-owned scratch buffers are alternated, and each must have at least
+`capacity` bytes. Neither scratch buffer may overlap the input or the other
+scratch buffer. `out_len` is required. The function returns the final string
+pointer, or NULL if a callback fails or produces an invalid length. With no
+callbacks, it returns the original input pointer and length unchanged.
+
+This preserves the Go `RewriteSet` registration-order semantics. The caller
+must serialize access to mutable callback state if needed; the assembly
+pipeline itself does not add locking.
