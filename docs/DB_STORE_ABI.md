@@ -21,10 +21,14 @@ All byte lengths are explicit; embedded NUL, separator, and arbitrary binary byt
 
 Sequence changes are single-statement atomic SQLite upserts and participate in an enclosing explicit transaction when one is active.
 
+- db_store_bucket_ensure(handle, path, path_len): creates one exact bucket path; parent paths are the caller's responsibility.
+- db_store_bucket_exists(handle, path, path_len): returns 1 if the exact path exists, 0 if absent, or -1 on error.
+- db_store_bucket_delete(handle, path, path_len): recursively deletes values, sequences, and bucket records whose paths begin with the supplied non-empty path. The root bucket cannot be deleted. A SQLite savepoint makes the operation atomic and allows it inside an outer transaction.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
 
 ## Compatibility work still required
 
-The current layer does not yet implement bucket enumeration, recursive bucket deletion, keyed/indexed collection policies, BSON marshal/unmarshal, index pointer maintenance, sequence allocation, fsck, or scheduled compressed backups. It also does not read existing BoltDB files. These remain explicit feature-parity tasks.
+The current layer does not yet implement bucket enumeration, keyed/indexed collection policies, BSON marshal/unmarshal, index pointer maintenance, fsck, or scheduled compressed backups. It also does not read existing BoltDB files. These remain explicit feature-parity tasks.
