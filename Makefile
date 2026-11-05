@@ -26,7 +26,7 @@ TRANSPORT_TEST_OBJECTS := $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/me
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CC) -no-pie -o $@ $^
+	$(CC) -no-pie -o $@ $^ -lsqlite3
 
 $(BUILD_DIR)/%.o: src/%.asm
 	@mkdir -p $(dir $@)
@@ -77,12 +77,16 @@ $(REWRITE_TEST): tests/rewrite_test.c $(BUILD_DIR)/bot/rewrite.o
 $(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o $(BUILD_DIR)/bot/context.o $(BUILD_DIR)/bot/context_emit.o $(BUILD_DIR)/bot/rewrite.o
 	$(CC) -no-pie -o $@ $^
 
-$(DB_STORE_TEST): tests/db_store_test.c $(BUILD_DIR)/db/sqlite.o\n\t$(CC) -no-pie -o $@ $^ -lsqlite3\n\ntest: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
+$(DB_STORE_TEST): tests/db_store_test.c $(BUILD_DIR)/db/sqlite.o
+	$(CC) -no-pie -o $@ $^ -lsqlite3
+
+test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
 	./$(TARGET) --self-test
 	./$(IRC_CONTEXT_TEST)
 	./$(IRC_COMMAND_TEST)
 	./$(POLLER_TEST)
 	./$(DB_KEY_TEST)
+	./$(DB_STORE_TEST)
 	./$(KARMA_TEST)
 	./$(KARMA_RECORD_TEST)
 	./$(KARMA_APPLY_TEST)
