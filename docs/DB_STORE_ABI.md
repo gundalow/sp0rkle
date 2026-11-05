@@ -58,6 +58,8 @@ The operation deletes the caller-supplied old index keys, upserts the canonical 
 
 `db_store_indexed_scan_next(handle, request)` consumes an index cursor, resolves ObjectId pointers to canonical BSON values, skips stale pointers, and optionally deduplicates through a caller-owned array of 16-byte IDs. It returns 1 for a record, 0 at end, or -1 on error. The 80-byte request carries the cursor, scan descriptor, values path, output buffer, output-length pointer and optional seen-ID storage.
 
+`db_store_indexed_prune_stale(handle, indexes_prefix, prefix_len, values_path, values_path_len)` removes index entries with malformed ObjectId pointer values or pointers that no longer resolve to a canonical value. It returns the number removed, or -1 on database failure, and runs inside a savepoint. This is a useful fsck repair primitive, but it cannot discover missing expected index entries without collection-specific index extraction logic.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
