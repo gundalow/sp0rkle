@@ -42,7 +42,7 @@ int main(void) {
     assert(bot_context_prepare_privmsg(prefixed, strlen(prefixed),
                                        "Bot", 3, "#chan", 5,
                                        &start, &len, &addressed) == 0);
-    fprintf(stderr, "prepared start=%zu len=%zu addressed=%d\\n", start, len, addressed);
+    fprintf(stderr, "prepared start=%zu len=%zu addressed=%d\n", start, len, addressed);
     assert(start == 7 && len == 5 && addressed == 1);
     assert(memcmp(prefixed + start, "hello", len) == 0);
 
