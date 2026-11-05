@@ -293,6 +293,7 @@ db_key_path_append:
 .path_length_prefix:
     mov r11, r13
     mov rax, r15
+    lea r8, [rbx + r11]
     xor edx, edx
 .path_prefix_loop:
     cmp edx, 8
@@ -303,7 +304,7 @@ db_key_path_append:
     mov rdi, rax
     mov rcx, rsi
     shr rdi, cl
-    mov [rbx + r11 + rdx], dil
+    mov [r8 + rdx], dil
     inc edx
     jmp .path_prefix_loop
 .path_copy_element:
