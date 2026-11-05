@@ -8,3 +8,6 @@ This module implements the reference database's byte-level key element encoding.
 - `db_key_encode_bool(name, name_len, value, out, capacity)`: writes `name || 0x1f || 0xff` for true and `name || 0x1f || 0x00` for false.
 
 Each encoder returns the number of bytes written or -1. Capacity is checked before output is modified. Names cannot contain `0x1f`; values are not restricted and may contain any byte. The caller owns all buffers and must supply non-overlapping input/output regions. Timestamp elements use the uint64 encoder with Unix milliseconds; ObjectId elements use the string encoder with the fixed name `_id` and exactly 12 binary bytes.
+
+- `db_key_encode_id(value12, out, capacity)`: writes the fixed ObjectId key element `_id || 0x1f || value12`, where the identifier is exactly 12 raw bytes; the total encoded length is 16.
+- `db_key_encode_timestamp_ms(name, name_len, unix_ms, out, capacity)`: encodes a signed Unix-millisecond value using its two's-complement 64-bit bit pattern in big-endian order. This matches the reference timestamp key's conversion to `uint64(time.UnixMilli())`, including pre-epoch values.
