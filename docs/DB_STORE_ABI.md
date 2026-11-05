@@ -46,6 +46,12 @@ Sequence changes are single-statement atomic SQLite upserts and participate in a
 
 The caller supplies the collection root path, encoded parent path, and final key element separately. Values remain opaque BSON byte sequences; typed decoding is performed by collection-specific codecs.
 
+## Indexed collection update primitive
+
+`db_store_indexed_update(handle, request)` applies an indexed-record mutation atomically using a SQLite savepoint. The 80-byte request contains canonical value path/key/value at offsets 0/8, 16/24 and 32/40; old index entries pointer/count at 48/56; and new index entries pointer/count at 64/72. Each index entry is the same 48-byte path/key/value tuple used by batch upsert.
+
+The operation deletes the caller-supplied old index keys, upserts the canonical BSON value, then writes the new index pointers. Any failure rolls back the entire mutation, including when nested inside an outer transaction. The caller must decode the old record and derive the complete old/new index sets; stale-index discovery and fsck repair remain higher-level responsibilities.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. Use db_key_path_append to append each preceding key element as an eight-byte big-endian length followed by the element bytes; the final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
