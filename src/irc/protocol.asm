@@ -108,7 +108,7 @@ irc_parse_message:
 
 .prefix:
     ; Optional source prefix: :server or :nick!user@host
-    cmp byte [r12], ':'
+    cmp byte [r12 + rbx], ':'
     jne .command
     mov ebx, 1
 .prefix_scan:
@@ -151,7 +151,7 @@ irc_parse_message:
     mov [r14 + 16], r10d
     mov [r14 + 20], ebx
     ; Determine whether the command is numeric from its first byte.
-    mov al, [r12]
+    mov al, [r12 + r10]
     cmp al, '0'
     jb .alpha_command
     cmp al, '9'
@@ -162,7 +162,7 @@ irc_parse_message:
 .numeric_scan:
     cmp rcx, rbx
     jae .command_done
-    mov al, [r12 + rcx]
+    mov al, [r12 + r10 + rcx]
     cmp al, '0'
     jb .bad
     cmp al, '9'
@@ -174,7 +174,7 @@ irc_parse_message:
 .alpha_scan:
     cmp rcx, rbx
     jae .command_done
-    mov al, [r12 + rcx]
+    mov al, [r12 + r10 + rcx]
     cmp al, 'A'
     jb .alpha_lower
     cmp al, 'Z'
