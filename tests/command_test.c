@@ -42,11 +42,11 @@ int main(void) {
     assert(e == NULL && n == 0);
     char normalized[32];
     ssize_t out_len;
-    out_len = bot_command_normalize_args("  one   two\\t three  ", strlen("  one   two\\t three  "),
+    out_len = bot_command_normalize_args("  one   two\t three  ", strlen("  one   two\t three  "),
                                          normalized, sizeof(normalized));
     assert(out_len == 13);
     assert(strcmp(normalized, "one two three") == 0);
-    out_len = bot_command_normalize_args(" \\t\\r\\n ", 5,
+    out_len = bot_command_normalize_args(" \t\r\n ", 5,
                                          normalized, sizeof(normalized));
     assert(out_len == 0 && normalized[0] == 0);
     out_len = bot_command_normalize_args("hello", 5, normalized, 5);
