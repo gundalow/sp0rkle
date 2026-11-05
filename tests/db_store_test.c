@@ -33,6 +33,8 @@ extern int db_store_keyed_delete(void *, const void *, size_t, const void *, siz
 extern int db_store_keyed_scan_open(void *, const void *, size_t, const void *, size_t, void **, void *, size_t);
 struct indexed_request { const void *value_path; size_t value_path_len; const void *value_key; size_t value_key_len; const void *value; size_t value_len; const struct batch_entry *old_indexes; size_t old_count; const struct batch_entry *new_indexes; size_t new_count; };
 extern int db_store_indexed_update(void *, const struct indexed_request *);
+struct indexed_get_request { const void *values_path; size_t values_path_len; const void *indexes_path; size_t indexes_path_len; const void *index_path; size_t index_path_len; const void *index_key; size_t index_key_len; void *pointer_scratch; size_t pointer_capacity; void *value_out; size_t value_capacity; size_t *value_len; };
+extern int db_store_indexed_get(void *, const struct indexed_get_request *);
 
 int main(void) {
     char filename[] = "/tmp/sp0rkle-kv-XXXXXX";
@@ -122,6 +124,13 @@ int main(void) {
     assert(db_store_indexed_update(db,&indexed)==0);
     assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,old_index,sizeof(old_index),out,sizeof(out),&out_len)==0);
     assert(db_store_get(db,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),out,sizeof(out),&out_len)==1);
+    unsigned char pointer_scratch[32], indexed_value[32]; size_t indexed_value_len=0;
+    struct indexed_get_request index_get={vals_path,sizeof(vals_path)-1,idxs_path,sizeof(idxs_path)-1,idxs_path,sizeof(idxs_path)-1,new_index,sizeof(new_index),pointer_scratch,sizeof(pointer_scratch),indexed_value,sizeof(indexed_value),&indexed_value_len};
+    assert(db_store_indexed_get(db,&index_get)==1);
+    assert(indexed_value_len==10 && memcmp(indexed_value,"record-two",10)==0);
+    index_get.index_path_len=0; index_get.index_key=object_key; index_get.index_key_len=sizeof(object_key);
+    assert(db_store_indexed_get(db,&index_get)==1);
+    assert(indexed_value_len==10 && memcmp(indexed_value,"record-two",10)==0);
     struct batch_entry bad_index={NULL,0,"bad",3,pointer_value,sizeof(pointer_value)};
     indexed.value="record-bad"; indexed.old_indexes=&next_index; indexed.new_indexes=&bad_index;
     assert(db_store_indexed_update(db,&indexed)==-1);
