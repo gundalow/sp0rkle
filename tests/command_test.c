@@ -25,6 +25,32 @@ extern int bot_command_dispatch(const struct bot_command_entry *, uint32_t,
                                 int,
                                 char *, size_t, void **);
 
+struct bot_line_filter {
+    int (*should_process)(void *, const char *, size_t);
+    void *ctx;
+};
+struct bot_command_request {
+    const struct bot_line_filter *filters;
+    uint32_t filter_count;
+    const char *nick;
+    size_t nick_len;
+    const struct bot_command_entry *entries;
+    uint32_t command_count;
+    const char *text;
+    size_t text_len;
+    uint32_t addressed;
+    uint32_t factoid_addition;
+    char *out_args;
+    size_t out_capacity;
+    void **out_handler;
+};
+extern int bot_command_process(const struct bot_command_request *);
+
+static int reject_line(void *ctx, const char *nick, size_t len) {
+    (void)ctx; (void)nick; (void)len;
+    return 0;
+}
+
 extern ssize_t bot_command_normalize_args(const char *, size_t, char *, size_t);
 
 extern const struct bot_command_entry *bot_command_match(
@@ -102,6 +128,26 @@ int main(void) {
                                        0, normalized, sizeof(normalized),
                                        &handler);
     assert(dispatched == 0 && handler == NULL);
+    struct bot_command_request request = {
+        .filters = NULL, .filter_count = 0,
+        .nick = "normal", .nick_len = 6,
+        .entries = entries, .command_count = 5,
+        .text = "help", .text_len = 4,
+        .addressed = 1, .factoid_addition = 0,
+        .out_args = normalized, .out_capacity = sizeof(normalized),
+        .out_handler = &handler
+    };
+    handler = NULL;
+    assert(bot_command_process(&request) == 1);
+    assert(handler == (void *)1);
+
+    struct bot_line_filter reject_filter = { reject_line, NULL };
+    request.filters = &reject_filter;
+    request.filter_count = 1;
+    handler = (void *)99;
+    strcpy(normalized, "stale");
+    assert(bot_command_process(&request) == 0);
+    assert(handler == NULL && normalized[0] == 0);
     puts("command tests: PASS");
     return 0;
 }
