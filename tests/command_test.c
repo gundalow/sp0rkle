@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
+#include <sys/types.h>
 
 struct bot_command_entry {
     const char *prefix;
@@ -9,6 +11,8 @@ struct bot_command_entry {
     void *handler;
     const char *help;
 };
+
+extern size_t bot_command_normalize_args(const char *, size_t, char *, size_t);
 
 extern const struct bot_command_entry *bot_command_match(
     const struct bot_command_entry *, uint32_t, const char *, size_t, size_t *);
@@ -36,6 +40,17 @@ int main(void) {
     assert(e == NULL && n == 0);
     e = bot_command_match(entries, 5, "rem", 3, &n);
     assert(e == NULL && n == 0);
+    char normalized[32];
+    size_t out_len;
+    out_len = bot_command_normalize_args("  one   two\\t three  ", 19,
+                                         normalized, sizeof(normalized));
+    assert(out_len == 13);
+    assert(strcmp(normalized, "one two three") == 0);
+    out_len = bot_command_normalize_args(" \\t\\r\\n ", 5,
+                                         normalized, sizeof(normalized));
+    assert(out_len == 0 && normalized[0] == 0);
+    out_len = bot_command_normalize_args("hello", 5, normalized, 5);
+    assert((ssize_t)out_len == (ssize_t)-1 && normalized[0] == 0);
     puts("command tests: PASS");
     return 0;
 }
