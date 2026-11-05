@@ -38,3 +38,28 @@ Network input must always be represented as pointer plus explicit length.
 NUL-terminated helpers are only for strings that have already been copied into
 a bounded, terminated buffer. Do not pass untrusted socket buffers to
 `str_len` or `strcmp`.
+
+## IRC message parser
+
+`irc_parse_message(buf, len, out)` takes RDI=buffer, RSI=byte length and
+RDX=output structure. It returns 0 on success and -1 for malformed input.
+The output occupies 152 bytes and contains uint32 offsets/lengths into the
+original input buffer:
+
+| Byte offset | Field |
+|---:|---|
+| 0, 4 | tags offset, tags length |
+| 8, 12 | prefix offset, prefix length |
+| 16, 20 | command offset, command length |
+| 24 | parameter count |
+| 28 | flags (bit 0 means the final parameter was introduced by a colon) |
+| 32 | 15 pairs of parameter offset and length (8 bytes per pair) |
+
+Absent tags/prefix are represented by zero offset and length. Parameter
+offsets and lengths exclude the separating spaces and, for a trailing
+parameter, exclude its leading colon. The trailing parameter consumes the
+rest of the frame and may be empty. The parser accepts alphabetic commands
+or exactly three decimal digits, and up to 15 parameters. It rejects empty
+frames, NUL/CR/LF bytes, empty tags/prefixes/commands and malformed commands.
+The input frame excludes CRLF; callers must strip the IRC line terminator
+before parsing. The parser does not allocate or copy input data.
