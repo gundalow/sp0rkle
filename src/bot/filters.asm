@@ -54,17 +54,19 @@ bot_nick_ignore_should_process:
     call r14
     test eax, eax
     jnz .blocked
-    mov eax, 1
+    mov r10d, 1
     jmp .restore
 .blocked:
-    xor eax, eax
+    xor r10d, r10d
 .restore:
-    ; Recompute the rounded allocation before releasing it.
+    ; Recompute the rounded allocation before releasing it. Keep the
+    ; boolean result in R10D because RAX is used for the size calculation.
     mov rax, r13
     inc rax
     add rax, 15
     and rax, -16
     add rsp, rax
+    mov eax, r10d
     jmp .done
 .allow:
     mov eax, 1
