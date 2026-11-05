@@ -68,7 +68,7 @@ static void test_join(void) {
     if (irc_send_join(sv[0], "#test") != 0)
         fail("irc_send_join returned an error");
 
-    const char expected[] = "JOIN #test\\r\\n";
+    const char expected[] = "JOIN #test\r\n";
     char actual[sizeof(expected)];
     read_exact(sv[1], actual, sizeof(expected) - 1);
     if (memcmp(actual, expected, sizeof(expected) - 1) != 0)
@@ -84,7 +84,7 @@ static void test_welcome_and_nick_in_use(void) {
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
         fail("socketpair for welcome failed");
-    const char welcome[] = ":server 001 bot :Welcome\\r\\n";
+    const char welcome[] = ":server 001 bot :Welcome\r\n";
     if (write(sv[1], welcome, sizeof(welcome) - 1) !=
         (ssize_t)(sizeof(welcome) - 1))
         fail("could not write welcome frame");
@@ -97,7 +97,7 @@ static void test_welcome_and_nick_in_use(void) {
 
     if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) != 0)
         fail("socketpair for nick-in-use failed");
-    const char nick_error[] = ":server 433 * bot :Nickname in use\\r\\n";
+    const char nick_error[] = ":server 433 * bot :Nickname in use\r\n";
     if (write(sv[1], nick_error, sizeof(nick_error) - 1) !=
         (ssize_t)(sizeof(nick_error) - 1))
         fail("could not write nick-in-use frame");
