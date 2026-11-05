@@ -98,3 +98,15 @@ same case-insensitive matching and tie behaviour as
 `bot_command_match`. It returns NULL when no prefix matches. Empty-input
 wiki response, candidate suggestions, and final response formatting remain
 the responsibility of the help command handler.
+
+
+## Help candidate suggestions
+
+`bot_command_possible(entries, count, text, text_len, out, capacity)`
+returns up to ten prefix pointers whose registered prefix contains at least
+one whitespace-delimited input word, case-insensitively. Each registered
+prefix is emitted at most once, in registration order. The output capacity
+may further limit the result count. A zero capacity returns zero without
+requiring an output pointer; a nonzero capacity with a null output pointer
+returns -1. The implementation uses ASCII whitespace and ASCII case folding,
+whereas Go's `strings.Fields` and `strings.ToLower` are Unicode-aware.
