@@ -57,3 +57,12 @@ callbacks, it returns the original input pointer and length unchanged.
 This preserves the Go `RewriteSet` registration-order semantics. The caller
 must serialize access to mutable callback state if needed; the assembly
 pipeline itself does not add locking.
+
+
+## Context output / send wrappers
+
+`bot_context_emit(const struct bot_emit_request *)` uses a 112-byte request containing a send callback and opaque context, operation (1 = PRIVMSG, 2 = ACTION, 3 = TOPIC), target and text pointer/length pairs, optional rewrite entries/count, two scratch buffers/capacity, and a 32-bit `apply_rewrites` flag at offset 96.
+
+The callback ABI is `int send(ctx, operation, target, target_len, text, text_len)`. Its return value is propagated. A null callback or rewrite failure returns -1. When `apply_rewrites` is nonzero, the ordered rewrite pipeline runs before the callback. Use this for Context `Reply` (PRIVMSG) and `Do` (ACTION). Set it to zero for explicit `Privmsg`, `Action`, and `Topic`, matching Go's rewrite bypass. A TOPIC query can use zero-length text.
+
+`bot_context_prefix_nick(nick, nick_len, text, text_len, out, capacity)` constructs the `nick: text` payload used by `ReplyN`; it returns the byte length or -1 when invalid or too small. The caller then sends that buffer through `bot_context_emit` with operation PRIVMSG and rewriting enabled. This keeps formatting independent of transport and avoids hidden allocation.
