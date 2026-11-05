@@ -164,6 +164,8 @@ bot_poller_set_poll_all:
     push r12
     push r13
     push r14
+    push r15
+    sub rsp, 8
     mov r12, rdi
     mov r13, rsi
     mov r14, rdx
