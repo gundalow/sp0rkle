@@ -17,7 +17,7 @@ static void expect(const char *s, const struct result *want, size_t n) {
 }
 int main(void) {
     const char *s1 = "a++ b-- c++";
-    const struct result w1[] = {{9,1,1},{5,1,-1},{0,1,1}};
+    const struct result w1[] = {{8,1,1},{4,1,-1},{0,1,1}};
     expect(s1, w1, 3);
     const char *s2 = " (a b c)-- d++ ";
     const struct result w2[] = {{11,1,1},{2,5,-1}};
