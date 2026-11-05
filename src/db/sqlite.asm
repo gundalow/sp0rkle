@@ -11,6 +11,7 @@ global db_store_put
 global db_store_put_batch
 global db_store_indexed_update
 global db_store_indexed_delete
+global db_store_indexed_prune_stale
 global db_store_get
 global db_store_delete
 global db_store_sequence_next
@@ -41,6 +42,7 @@ extern sqlite3_backup_init
 extern sqlite3_backup_step
 extern sqlite3_backup_finish
 extern sqlite3_column_text
+extern sqlite3_changes
 
 %define SQLITE_OPEN_READWRITE 0x00000002
 %define SQLITE_OPEN_CREATE    0x00000004
@@ -86,6 +88,10 @@ indexed_release_sql: db "RELEASE indexed_update", 0
 indexed_delete_savepoint_sql: db "SAVEPOINT indexed_delete", 0
 indexed_delete_rollback_sql: db "ROLLBACK TO indexed_delete", 0
 indexed_delete_release_sql: db "RELEASE indexed_delete", 0
+indexed_prune_sql: db "DELETE FROM kv AS idx WHERE substr(idx.path,1,?1)=?2 AND (length(idx.value)!=16 OR substr(idx.value,1,4)!=x'5f69641f' OR NOT EXISTS (SELECT 1 FROM kv AS vals WHERE vals.path=?3 AND vals.key=idx.value))", 0
+indexed_prune_savepoint_sql: db "SAVEPOINT indexed_prune", 0
+indexed_prune_rollback_sql: db "ROLLBACK TO indexed_prune", 0
+indexed_prune_release_sql: db "RELEASE indexed_prune", 0
 
 section .text
 ; int db_store_open(path, sqlite_handle_out)
@@ -1625,4 +1631,102 @@ db_store_indexed_delete:
     pop r12
     pop rbx
     pop rbp
+    ret
+
+; int db_store_indexed_prune_stale(handle,indexes_prefix,prefix_len,values_path,values_len)
+; Removes malformed or dangling ObjectId pointers from an indexed collection
+; subtree. Returns number of removed entries, or -1 on database failure.
+db_store_indexed_prune_stale:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    mov rbx, r8
+    mov qword [rsp], 0
+    test r12, r12
+    jz .prune_error
+    test r13, r13
+    jz .prune_error
+    test r15, r15
+    jz .prune_error
+    mov rdi, r12
+    lea rsi, [rel indexed_prune_savepoint_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .prune_error
+    mov rdi, r12
+    lea rsi, [rel indexed_prune_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .prune_rollback
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r14
+    call sqlite3_bind_int64
+    test eax, eax
+    jnz .prune_finalize_rollback
+    mov rdi, [rsp]
+    mov esi, 2
+    mov rdx, r13
+    mov rcx, r14
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .prune_finalize_rollback
+    mov rdi, [rsp]
+    mov esi, 3
+    mov rdx, r15
+    mov rcx, rbx
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .prune_finalize_rollback
+    mov rdi, [rsp]
+    call sqlite3_step
+    cmp eax, SQLITE_DONE
+    jne .prune_finalize_rollback
+    mov rdi, r12
+    call sqlite3_changes
+    mov [rsp + 8], eax
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    mov qword [rsp], 0
+    test eax, eax
+    jnz .prune_rollback
+    mov rdi, r12
+    lea rsi, [rel indexed_prune_release_sql]
+    call db_store_exec
+    test eax, eax
+    jnz .prune_rollback
+    mov eax, [rsp + 8]
+    jmp .prune_done
+.prune_finalize_rollback:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+    mov qword [rsp], 0
+.prune_rollback:
+    mov rdi, r12
+    lea rsi, [rel indexed_prune_rollback_sql]
+    call db_store_exec
+    mov rdi, r12
+    lea rsi, [rel indexed_prune_release_sql]
+    call db_store_exec
+.prune_error:
+    mov eax, -1
+.prune_done:
+    add rsp, 16
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     ret
