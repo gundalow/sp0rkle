@@ -19,7 +19,6 @@ test_irc_line: db "PING :server", 13, 10, 0
 test_upper: db "PRIVMSG", 0
 test_lower: db "privmsg", 0
 
-section .text
 main:
     push rbp
     mov rbp, rsp
