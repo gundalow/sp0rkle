@@ -1,0 +1,5 @@
+# Karma annotation parser ABI
+
+`karma_parse_annotations(text, text_len, out, out_capacity)` scans IRC message text for karma annotations and returns pointer-free byte spans into the original message. Each 16-byte output record contains a uint64 byte offset, uint32 byte length and signed int32 delta (+1 for `++`, -1 for `--`). Results are emitted from right to left, matching the reference lexer's reverse scan.
+
+An annotation is either an ASCII alphanumeric token followed by `++` or `--`, or a single-level parenthesised subject such as `(a multi word subject)++`. When text follows the operator, its first byte must be ASCII whitespace. Empty subjects, sign runs other than exactly two identical signs, unmatched parentheses and malformed adjacency are ignored. The output array is caller-owned; insufficient capacity returns -1. Offsets and lengths are byte-based. Unlike Go's Unicode category predicates, this initial implementation recognises ASCII letters and digits only; Unicode karma subjects remain a parity gap.
