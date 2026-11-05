@@ -15,6 +15,8 @@ global db_store_bucket_ensure
 global db_store_bucket_exists
 global db_store_bucket_delete
 global db_store_scan_open
+global db_store_scan_tree_open
+global db_store_scan_tree_next
 global db_store_scan_next
 global db_store_scan_close
 
@@ -61,6 +63,7 @@ bucket_delete_kv_sql: db "DELETE FROM kv WHERE substr(path,1,?1)=?2", 0
 bucket_delete_seq_sql: db "DELETE FROM sequences WHERE substr(path,1,?1)=?2", 0
 bucket_delete_bucket_sql: db "DELETE FROM buckets WHERE substr(path,1,?1)=?2", 0
 scan_sql: db "SELECT key,value FROM kv WHERE path=?1 ORDER BY key", 0
+scan_tree_sql: db "SELECT path,key,value FROM kv WHERE substr(path,1,?1)=?2 ORDER BY path,key", 0
 savepoint_sql: db "SAVEPOINT bucket_delete", 0
 rollback_savepoint_sql: db "ROLLBACK TO bucket_delete", 0
 release_sql: db "RELEASE bucket_delete", 0
@@ -1030,4 +1033,190 @@ db_store_put_batch:
     pop r13
     pop r12
     pop rbx
+    ret
+
+; int db_store_scan_tree_open(handle,prefix,prefix_len,statement_out)
+; Opens an ordered cursor over all values in the exact bucket and descendants.
+db_store_scan_tree_open:
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 16
+    mov r12, rdi
+    mov r13, rsi
+    mov r14, rdx
+    mov r15, rcx
+    mov qword [rsp], 0
+    test r12, r12
+    jz .tree_open_error
+    test r13, r13
+    jz .tree_open_error
+    test r15, r15
+    jz .tree_open_error
+    mov rdi, r12
+    lea rsi, [rel scan_tree_sql]
+    mov edx, -1
+    mov rcx, rsp
+    xor r8d, r8d
+    call sqlite3_prepare_v2
+    test eax, eax
+    jnz .tree_open_error
+    mov rdi, [rsp]
+    mov esi, 1
+    mov rdx, r14
+    call sqlite3_bind_int64
+    test eax, eax
+    jnz .tree_open_finalize_error
+    mov rdi, [rsp]
+    mov esi, 2
+    mov rdx, r13
+    mov rcx, r14
+    mov r8, SQLITE_TRANSIENT
+    call sqlite3_bind_blob
+    test eax, eax
+    jnz .tree_open_finalize_error
+    mov rax, [rsp]
+    mov [r15], rax
+    xor eax, eax
+    jmp .tree_open_done
+.tree_open_finalize_error:
+    mov rdi, [rsp]
+    call sqlite3_finalize
+.tree_open_error:
+    mov eax, -1
+.tree_open_done:
+    add rsp, 16
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    ret
+
+; Scan output descriptor (72 bytes):
+; +0 path buffer, +8 path capacity, +16 path length output pointer
+; +24 key buffer, +32 key capacity, +40 key length output pointer
+; +48 value buffer, +56 value capacity, +64 value length output pointer.
+; int db_store_scan_tree_next(statement, descriptor)
+; Returns 1 row, 0 end, -1 error/capacity failure.
+db_store_scan_tree_next:
+    cld
+    push rbp
+    mov rbp, rsp
+    push rbx
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 40
+    mov r12, rdi
+    mov r13, rsi
+    test r12, r12
+    jz .tree_next_error
+    test r13, r13
+    jz .tree_next_error
+    cmp qword [r13 + 16], 0
+    je .tree_next_error
+    cmp qword [r13 + 40], 0
+    je .tree_next_error
+    cmp qword [r13 + 64], 0
+    je .tree_next_error
+    mov rdi, r12
+    call sqlite3_step
+    cmp eax, SQLITE_ROW
+    je .tree_next_row
+    cmp eax, SQLITE_DONE
+    je .tree_next_end
+    jmp .tree_next_error
+.tree_next_row:
+    mov rdi, r12
+    xor esi, esi
+    call sqlite3_column_bytes
+    mov [rsp], rax
+    mov rdi, r12
+    mov esi, 1
+    call sqlite3_column_bytes
+    mov [rsp + 8], rax
+    mov rdi, r12
+    mov esi, 2
+    call sqlite3_column_bytes
+    mov [rsp + 16], rax
+    mov rax, [rsp]
+    cmp rax, [r13 + 8]
+    ja .tree_next_error
+    mov rax, [rsp + 8]
+    cmp rax, [r13 + 32]
+    ja .tree_next_error
+    mov rax, [rsp + 16]
+    cmp rax, [r13 + 56]
+    ja .tree_next_error
+
+    ; Copy path.
+    mov rcx, [rsp]
+    test rcx, rcx
+    jz .tree_path_done
+    mov rdi, r12
+    xor esi, esi
+    call sqlite3_column_blob
+    mov rsi, rax
+    mov rdi, [r13]
+    test rdi, rdi
+    jz .tree_next_error
+    mov rcx, [rsp]
+    rep movsb
+.tree_path_done:
+    ; Copy key.
+    mov rcx, [rsp + 8]
+    test rcx, rcx
+    jz .tree_key_done
+    mov rdi, r12
+    mov esi, 1
+    call sqlite3_column_blob
+    mov rsi, rax
+    mov rdi, [r13 + 24]
+    test rdi, rdi
+    jz .tree_next_error
+    mov rcx, [rsp + 8]
+    rep movsb
+.tree_key_done:
+    ; Copy value.
+    mov rcx, [rsp + 16]
+    test rcx, rcx
+    jz .tree_value_done
+    mov rdi, r12
+    mov esi, 2
+    call sqlite3_column_blob
+    mov rsi, rax
+    mov rdi, [r13 + 48]
+    test rdi, rdi
+    jz .tree_next_error
+    mov rcx, [rsp + 16]
+    rep movsb
+.tree_value_done:
+    mov rax, [r13 + 16]
+    mov rcx, [rsp]
+    mov [rax], rcx
+    mov rax, [r13 + 40]
+    mov rcx, [rsp + 8]
+    mov [rax], rcx
+    mov rax, [r13 + 64]
+    mov rcx, [rsp + 16]
+    mov [rax], rcx
+    mov eax, 1
+    jmp .tree_next_done
+.tree_next_end:
+    xor eax, eax
+    jmp .tree_next_done
+.tree_next_error:
+    mov eax, -1
+.tree_next_done:
+    add rsp, 40
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
+    pop rbp
     ret
