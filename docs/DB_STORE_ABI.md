@@ -16,6 +16,11 @@ The assembly storage adapter uses SQLite as the durable transactional engine. It
 
 All byte lengths are explicit; embedded NUL, separator, and arbitrary binary bytes are preserved. Input buffers are copied by SQLite using SQLITE_TRANSIENT, so callers may release them after a call. The output buffer is caller-owned. A non-null pointer is required for path and key even when their lengths are zero; out_len is required for reads. A zero-length value is supported.
 
+- db_store_sequence_next(handle, path, path_len, value_out): atomically increments a per-path signed 64-bit sequence, returning the new value through value_out (first value is 1).
+- db_store_sequence_set(handle, path, path_len, value): sets the sequence to an exact signed 64-bit value; the next increment returns value + 1.
+
+Sequence changes are single-statement atomic SQLite upserts and participate in an enclosing explicit transaction when one is active.
+
 ## Path representation
 
 The adapter treats path as an opaque byte string. A higher-level key-path encoder must serialize each preceding key element unambiguously (for example, fixed-width length prefix followed by element bytes) before calling the store. The final key element is passed as key. This preserves the reference K.B() distinction between nested bucket path and final key without conflating arbitrary binary element contents.
