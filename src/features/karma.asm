@@ -21,7 +21,7 @@ karma_parse_annotations:
     push r13
     push r14
     push r15
-    sub rsp, 24
+    sub rsp, 72
     mov r12, rdi                ; input
     mov r13, rsi                ; input length
     mov r14, rdx                ; output
@@ -110,8 +110,7 @@ karma_parse_annotations:
 .bracket_found:
     mov [rbp - 104], rax       ; opening bracket index
     mov rcx, [rbp - 96]
-    sub rcx, rax
-    dec rcx                    ; inner length
+    sub rcx, rax              ; inner length
     test rcx, rcx
     jz .scan_prefix
     mov rdx, [rbp - 56]
@@ -195,7 +194,7 @@ karma_parse_annotations:
 .karma_error_stack:
     mov rax, -1
 .karma_return:
-    add rsp, 24
+    add rsp, 72
     pop r15
     pop r14
     pop r13
