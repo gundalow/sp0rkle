@@ -23,7 +23,7 @@ $(BUILD_DIR)/%.o: src/%.asm
 	@mkdir -p $(dir $@)
 	$(NASM) -f elf64 -g -F dwarf -Wall -Werror -w-reloc-rel-dword -o $@ $<
 
-$(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/runtime/strings.o
+$(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
 
 $(TRANSPORT_TEST): tests/transport_test.c $(TRANSPORT_TEST_OBJECTS)
