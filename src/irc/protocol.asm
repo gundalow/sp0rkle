@@ -98,7 +98,13 @@ irc_parse_message:
     dec eax
     mov [r14 + 4], eax
     inc rbx
-    jmp .skip_spaces
+.tags_skip_spaces:
+    cmp rbx, r13
+    jae .bad
+    cmp byte [r12 + rbx], ' '
+    jne .prefix
+    inc rbx
+    jmp .tags_skip_spaces
 
 .prefix:
     ; Optional source prefix: :server or :nick!user@host
@@ -120,11 +126,17 @@ irc_parse_message:
     dec eax
     mov [r14 + 12], eax
     inc rbx
-    jmp .skip_spaces
+.prefix_skip_spaces:
+    cmp rbx, r13
+    jae .bad
+    cmp byte [r12 + rbx], ' '
+    jne .command
+    inc rbx
+    jmp .prefix_skip_spaces
 
 .command:
     ; Command is alphabetic or exactly three decimal digits.
-    mov ebx, 0
+    mov r10, rbx
 .command_scan:
     cmp rbx, r13
     jae .command_end
@@ -136,7 +148,7 @@ irc_parse_message:
 .command_end:
     test ebx, ebx
     jz .bad
-    mov dword [r14 + 16], 0
+    mov [r14 + 16], r10d
     mov [r14 + 20], ebx
     ; Determine whether the command is numeric from its first byte.
     mov al, [r12]
