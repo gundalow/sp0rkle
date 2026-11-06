@@ -78,38 +78,33 @@ Target: x86-64 Linux, NASM, System V AMD64 ABI.
 - Added `bot_irc_privmsg_context` to compose extraction, Context body/address preparation, and reply-target resolution in one call.
 - Regression tests verify addressed channel messages and direct messages produce the expected body, addressed flag, and reply destination. The adapter still does not invoke filters or command handlers.
 
-## Not implemented yet
+## Agreed delivery scope
 
-The items below remain required by SPEC.md; this milestone is not a complete
-bot implementation.
+Only the following two milestones are in scope. The user explicitly excluded Factoids, Karma, K URLs, Statistics, Reminders and tells, Markov, Utility commands, HTTP service, optional integrations, and all database drivers other than the SQLite implementation already used by the low-level tests. Those items are not delivery blockers and will not be implemented.
 
-1. Configuration parsing, startup/shutdown, signals, time zones and logging
-   levels.
-2. TLS IRC transport, reconnect/backoff, multi-server management and complete
-   event lifecycle; TCP connect/send/receive, registration, parser and outbound
-   PRIVMSG/ACTION/TOPIC serialization primitives are implemented.
-3. Complete runtime Context/event-handler integration, live command registry
-   configuration, built-in help responses, rewrite integration and poller
-   timer/background scheduling; lower-level command, rewrite and poller
-   primitives are implemented.
-4. Durable storage, hierarchical bucket operations, BSON-compatible records,
-   keyed/indexed collections, transactions, fsck, sequences and backups; key
-   element encoders are implemented.
-5. Factoids, complete karma collection/event/command wiring, quotes, seen, URL
-   capture/cache/search, statistics, reminders/tells and Markov; karma parser
-   and record/update primitives are implemented.
-6. Calculator, datetime, netmask, character/base/length and random decision
-   commands.
-7. HTTP short-link/cache server and optional third-party integrations.
-8. Reference transcript fixtures and end-to-end tests against a local IRCd.
+### Milestone 1 — IRC console client
 
-## Porting sequence
+The executable accepts a single IRC server, connects over plain TCP, sends NICK/USER registration, waits for numeric 001, joins a configured channel, responds to PING, and prints every received IRC line to stdout until the connection closes or the user interrupts it.
 
-Build the platform/runtime and test primitives first; then implement the IRC
-adapter and deterministic bot core; then storage; then domain repositories
-and drivers; finally HTTP and optional integrations. Keep every feature behind
-small ABI-stable module interfaces. Do not invent unspecified behaviour:
-resolve SPEC.md's compatibility backlog with fixtures from the Go reference.
+Acceptance checks:
+- Connects to a local test IRC daemon using command-line host/port/nick/channel settings.
+- Emits valid NICK and USER registration lines and JOIN after welcome.
+- Prints received server and channel messages without losing their IRC text.
+- Responds to PING with PONG and continues receiving messages.
+- Exits non-zero with a useful diagnostic on connection, registration, or I/O failure; closes the socket on exit.
+- Automated socketpair tests cover protocol sequencing; a local IRCd smoke test covers the complete executable path.
+
+TLS, reconnect/backoff, multiple servers, channel configuration files, and bot command dispatch are not part of this milestone.
+
+### Milestone 2 — chance
+
+Implement only the user-confirmed `chance` behaviour as a command, using the existing IRC command/context/output pipeline where possible. The exact command syntax and response semantics must be confirmed before implementation. The upstream Go source currently exposes `rand`, `decide`, and `choose` in its decision driver; it does not contain a command named `chance`. Do not silently substitute one of those commands for `chance`.
+
+Acceptance checks will be added after the intended syntax and behaviour are clarified.
+
+## Deferred / explicitly out of scope
+
+No Factoids, Karma, K URLs, Statistics, Reminders/tells, Markov, utility commands, HTTP service, optional integrations, additional storage drivers, or general clean-room feature parity beyond the two milestones above.
 
 ## Validation status
 
