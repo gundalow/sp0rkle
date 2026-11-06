@@ -7,10 +7,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <netinet/in.h>
 #include <unistd.h>
-
-extern int irc_console_run(const char *, const char *, const char *, const char *);
 
 struct server_state { int listener; int port; int failed; };
 
@@ -57,15 +56,28 @@ int main(void) {
     pthread_t thread; assert(pthread_create(&thread,NULL,server_main,&st)==0);
 
     int output[2]; assert(pipe(output)==0);
-    fflush(stdout); int saved=dup(STDOUT_FILENO); assert(saved>=0);
-    assert(dup2(output[1],STDOUT_FILENO)>=0); close(output[1]);
     char port[16]; snprintf(port,sizeof(port),"%d",st.port);
-    int rc=irc_console_run("127.0.0.1",port,"testbot","#test");
-    fflush(stdout);
-    assert(dup2(saved,STDOUT_FILENO)>=0); close(saved);
-    char captured[2048]; ssize_t n=read(output[0],captured,sizeof(captured)-1); assert(n>=0); captured[n]=0; close(output[0]);
+    pid_t child=fork(); assert(child>=0);
+    if(child==0) {
+        close(output[0]);
+        if(dup2(output[1],STDOUT_FILENO)<0) _exit(126);
+        close(output[1]);
+        execl("./build/sp0rkle","sp0rkle","-s","127.0.0.1","-p",port,"-n","testbot","-c","#test",(char *)NULL);
+        _exit(127);
+    }
+    close(output[1]);
+    char captured[2048]; size_t used=0;
+    while(used+1<sizeof(captured)) {
+        ssize_t n=read(output[0],captured+used,sizeof(captured)-1-used);
+        if(n<0 && errno==EINTR) continue;
+        if(n<=0) break;
+        used+=(size_t)n;
+    }
+    captured[used]=0; close(output[0]);
+    int status=0; assert(waitpid(child,&status,0)==child);
     pthread_join(thread,NULL); close(st.listener);
-    assert(rc==0); assert(st.failed==0);
+    assert(WIFEXITED(status) && WEXITSTATUS(status)==0);
+    assert(st.failed==0);
     assert(strstr(captured,"001 testbot :Welcome")!=NULL);
     assert(strstr(captured,"NOTICE testbot :visible message")!=NULL);
     puts("IRC console tests: PASS");
