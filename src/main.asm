@@ -26,6 +26,7 @@ selftest_fail: db "self-test: FAIL", 0
 arg_version: db "--version", 0
 arg_selftest: db "--self-test", 0
 arg_help: db "-h", 0
+arg_help_long: db "--help", 0
 test_irc_line: db "PING :server", 13, 10, 0
 test_upper: db "PRIVMSG", 0
 test_lower: db "privmsg", 0
@@ -68,6 +69,11 @@ main:
     jz .selftest
     mov rdi, [r12 + 8]
     lea rsi, [rel arg_help]
+    call strcmp
+    test eax, eax
+    jz .usage_success
+    mov rdi, [r12 + 8]
+    lea rsi, [rel arg_help_long]
     call strcmp
     test eax, eax
     jz .usage_success
