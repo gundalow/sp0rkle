@@ -22,6 +22,7 @@ KARMA_STORE_TEST := $(BUILD_DIR)/karma_store_test
 KARMA_EVENT_TEST := $(BUILD_DIR)/karma_event_test
 KARMA_APPLY_TEST := $(BUILD_DIR)/karma_apply_test
 EVENT_TEST := $(BUILD_DIR)/event_test
+IRC_CONSOLE_TEST := $(BUILD_DIR)/irc_console_test
 IRC_SERIALIZE_TEST := $(BUILD_DIR)/irc_serialize_test
 TRANSPORT_TEST_OBJECTS := $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/irc/transport.o
 
@@ -37,6 +38,9 @@ $(BUILD_DIR)/%.o: src/%.asm
 
 $(IRC_SERIALIZE_TEST): tests/irc_serialize_test.c $(BUILD_DIR)/irc/serialize.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
+
+$(IRC_CONSOLE_TEST): tests/irc_console_test.c $(BUILD_DIR)/irc/console.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
+	$(CC) -no-pie -pthread -o $@ $^
 
 $(EVENT_TEST): tests/event_test.c $(BUILD_DIR)/irc/events.o $(BUILD_DIR)/irc/transport.o $(BUILD_DIR)/irc/protocol.o $(BUILD_DIR)/runtime/strings.o $(BUILD_DIR)/runtime/memory.o
 	$(CC) -no-pie -o $@ $^
@@ -92,7 +96,7 @@ $(IRC_CONTEXT_TEST): tests/irc_context_test.c $(BUILD_DIR)/bot/irc_context.o $(B
 $(DB_STORE_TEST): tests/db_store_test.c $(BUILD_DIR)/db/sqlite.o $(BUILD_DIR)/db/key.o $(BUILD_DIR)/db/collection.o
 	$(CC) -no-pie -o $@ $^ -lsqlite3
 
-test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_BSON_TEST) $(KARMA_STORE_TEST) $(KARMA_EVENT_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
+test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLER_TEST) $(DB_KEY_TEST) $(KARMA_TEST) $(KARMA_RECORD_TEST) $(KARMA_BSON_TEST) $(KARMA_STORE_TEST) $(KARMA_EVENT_TEST) $(KARMA_APPLY_TEST) $(IRC_SERIALIZE_TEST) $(IRC_CONSOLE_TEST) $(EVENT_TEST) $(TRANSPORT_TEST) $(COMMAND_TEST) $(CONTEXT_TEST) $(FILTER_TEST) $(REWRITE_TEST) $(CONTEXT_EMIT_TEST)
 	./$(TARGET) --self-test
 	./$(IRC_CONTEXT_TEST)
 	./$(IRC_COMMAND_TEST)
@@ -106,6 +110,7 @@ test: $(TARGET) $(DB_STORE_TEST) $(IRC_CONTEXT_TEST) $(IRC_COMMAND_TEST) $(POLLE
 	./$(KARMA_EVENT_TEST)
 	./$(KARMA_APPLY_TEST)
 	./$(IRC_SERIALIZE_TEST)
+	./$(IRC_CONSOLE_TEST)
 	./$(EVENT_TEST)
 	./$(TRANSPORT_TEST)
 	./$(COMMAND_TEST)
