@@ -89,7 +89,7 @@ The CLI supports `-s SERVER`, optional `-p PORT` (default 6667), optional
 `-n NICK` (default sp0rklf), and required `-c CHANNEL`. The loopback
 integration test launches the actual executable and checks registration,
 welcome, JOIN, PING/PONG and printed NOTICE output. See
-`docs/IRC_CONSOLE_ABI.md`. <badge>Implementation and CI complete</badge> The loopback executable test passes in GitHub Actions run 42181922993.
+`docs/IRC_CONSOLE_ABI.md`. **Implementation and CI complete.** The loopback executable test passes in GitHub Actions run 42181922993.
 
 The executable accepts a single IRC server, connects over plain TCP, sends NICK/USER registration, waits for numeric 001, joins a configured channel, responds to PING, and prints every received IRC line to stdout until the connection closes or the user interrupts it.
 
