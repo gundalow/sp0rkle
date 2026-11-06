@@ -12,12 +12,14 @@ Requirements: x86-64 Linux, NASM, GCC or a compatible C compiler, GNU Make.
 make
 make test
 ./build/sp0rkle --version
+./build/sp0rkle --help
+./build/sp0rkle -s irc.example.net -p 6667 -n sp0rklf -c '#channel'
 ```
 
-The current executable is an implementation scaffold, not yet an IRC bot. It
-provides the native build, runtime conventions, and initial protocol/string
-primitives on which the feature port will be built. It deliberately does not
-claim support for persistence, IRC connections, or domain drivers yet.
+The executable now provides a single-server plain-TCP IRC console client. It
+registers a nickname, waits for the server welcome, joins one channel, answers
+PING, and prints received IRC lines to stdout. It is not yet a full multi-server
+bot and does not implement TLS, reconnects, or command handling.
 
 ## Development rules
 
@@ -34,5 +36,6 @@ claim support for persistence, IRC connections, or domain drivers yet.
 
 ## Current milestone
 
-See [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md) for the
-implemented foundation and remaining specification work.
+The agreed delivery milestones are (1) an IRC console client and (2) the
+`chance` command. Explicitly deferred features are listed in
+[docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
