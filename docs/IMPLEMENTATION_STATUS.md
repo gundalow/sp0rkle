@@ -105,7 +105,7 @@ TLS, reconnect/backoff, multiple servers, channel configuration files, and bot c
 
 ### Milestone 2 — chance
 
-Implement only the user-confirmed `chance` behaviour as a command, using the existing IRC command/context/output pipeline where possible. The exact command syntax and response semantics must be confirmed before implementation. The upstream Go source currently exposes `rand`, `decide`, and `choose` in its decision driver; it does not contain a command named `chance`. Do not silently substitute one of those commands for `chance`.
+Implement only the user-confirmed `chance` behaviour as a command, using the existing IRC command/context/output pipeline where possible. The exact command syntax and response semantics must be confirmed before implementation. The upstream Go source currently exposes `rand`, `decide`, and `choose` in its decision driver; it does not contain a command named `chance`. The specification mentions “chance of that is” only as a factoid feature, which is otherwise explicitly excluded by the agreed scope. Confirm whether Milestone 2 means that factoid chance modifier (which would be a deliberate exception to the exclusion) or a new standalone `chance` command. Do not silently substitute `rand`, `decide`, or `choose`.
 
 Acceptance checks will be added after the intended syntax and behaviour are clarified.
 
