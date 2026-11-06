@@ -31,7 +31,7 @@ irc_console_run:
     push r13
     push r14
     push r15
-    sub rsp, 552
+    sub rsp, 680
 
     mov r13, rdi
     mov r14, rsi
@@ -128,7 +128,7 @@ irc_console_run:
 .return:
     mov eax, ebx
 .done:
-    add rsp, 552
+    add rsp, 680
     pop r15
     pop r14
     pop r13
