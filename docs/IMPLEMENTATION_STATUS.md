@@ -84,6 +84,13 @@ Only the following two milestones are in scope. The user explicitly excluded Fac
 
 ### Milestone 1 — IRC console client
 
+Implementation is now present in `src/irc/console.asm` and `src/main.asm`.
+The CLI supports `-s SERVER`, optional `-p PORT` (default 6667), optional
+`-n NICK` (default sp0rklf), and required `-c CHANNEL`. The loopback
+integration test launches the actual executable and checks registration,
+welcome, JOIN, PING/PONG and printed NOTICE output. See
+`docs/IRC_CONSOLE_ABI.md`. Final acceptance depends on the current CI run.
+
 The executable accepts a single IRC server, connects over plain TCP, sends NICK/USER registration, waits for numeric 001, joins a configured channel, responds to PING, and prints every received IRC line to stdout until the connection closes or the user interrupts it.
 
 Acceptance checks:
